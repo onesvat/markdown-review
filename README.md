@@ -13,6 +13,12 @@ python -m venv .venv
 
 `uv sync` also works if you prefer uv.
 
+## Test
+
+```bash
+uv run pytest
+```
+
 ## Use
 
 ```bash
@@ -68,6 +74,12 @@ markdown-review suggest \
 # List open suggestions
 markdown-review suggestions /abs/path/to/doc.md --json
 ```
+
+## Skill
+
+This repository includes a publishable Codex skill at `skills/markdown-review/`.
+The skill is for agents reviewing Markdown documents with an installed
+`markdown-review` CLI; it is not required for developing this repository.
 
 ## Review Data
 
@@ -175,3 +187,5 @@ Inline suggestions are shown directly on the rendered text, similar to highlight
 - Old annotation `status` values are read once and migrated to `seen` when the sidecar is saved.
 - If Markdown is edited outside this tool and an item disappears, its review data moves to `orphans`.
 - The UI comment form always creates `author=user`. Highlights and source suggestions use the current mode toggle.
+- The server is intended for local review. Be careful when using `--host 0.0.0.0`,
+  because it can expose the review UI to other machines on the network.

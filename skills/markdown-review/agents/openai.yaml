@@ -1,0 +1,7 @@
+interface:
+  display_name: "Markdown Review"
+  short_description: "Review Markdown with sidecar annotations"
+  default_prompt: "Use $markdown-review to respond to open review annotations in this Markdown document."
+
+policy:
+  allow_implicit_invocation: true
