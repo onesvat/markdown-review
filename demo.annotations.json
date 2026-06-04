@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "doc_path": "/mnt/htpc/Code/markdown-review/demo.md",
+  "doc_path": "demo.md",
   "updated_at": "2026-06-04T07:56:53Z",
   "paragraphs": {
     "0420167daa22": {
@@ -174,45 +174,6 @@
           "note": "Rejected durumunu göstermek için eklendi.",
           "status": "rejected",
           "ts": "2026-06-04T06:58:26Z",
-          "applied_ts": null
-        },
-        {
-          "id": "94585771-1bdd-4a0b-add9-5344990c03bf",
-          "author": "user",
-          "action": "inline_replace",
-          "anchor_id": "4010accf130f",
-          "raw": "-review'un tem",
-          "selected_text": "-review'un tem",
-          "occurrence": 0,
-          "note": "",
-          "status": "rejected",
-          "ts": "2026-06-04T07:32:14Z",
-          "applied_ts": null
-        },
-        {
-          "id": "750b348a-35e0-4350-bd79-e9d20d67ea14",
-          "author": "user",
-          "action": "inline_replace",
-          "anchor_id": "4010accf130f",
-          "raw": "arkdown-review'ufff",
-          "selected_text": "arkdown-review'u",
-          "occurrence": 0,
-          "note": "",
-          "status": "rejected",
-          "ts": "2026-06-04T07:32:28Z",
-          "applied_ts": null
-        },
-        {
-          "id": "a4490757-2777-4765-9723-85036e66ba3c",
-          "author": "user",
-          "action": "inline_replace",
-          "anchor_id": "4010accf130f",
-          "raw": "i tek yerder",
-          "selected_text": "i tek yerde",
-          "occurrence": 0,
-          "note": "",
-          "status": "open",
-          "ts": "2026-06-04T07:44:53Z",
           "applied_ts": null
         }
       ]
