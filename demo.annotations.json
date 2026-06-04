@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "doc_path": "/mnt/htpc/Code/markdown-review/demo.md",
+  "updated_at": "2026-06-04T07:56:53Z",
+  "paragraphs": {
+    "0420167daa22": {
+      "id": "0420167daa22",
+      "preview": "Her paragraf, başlık, liste elemanı, kod bloğu ve tablo kendi review item kimliğini alır. Bu paragrafın üzerinde hem yo…",
+      "annotations": [
+        {
+          "id": "fd7dd6ba-ae93-43bd-a34f-482281db956e",
+          "author": "user",
+          "type": "comment",
+          "text": "Bu bir kullanıcı yorumu örneği. Agent bunu new kuyruğunda görebilir.",
+          "seen": false,
+          "ts": "2026-06-04T06:57:48Z"
+        }
+      ],
+      "highlights": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "c21399d08149": {
+      "id": "c21399d08149",
+      "preview": "- İlk liste elemanı ayrı bir review item olarak yorumlanabilir.",
+      "annotations": [
+        {
+          "id": "1f2dad3d-8a97-49a4-be58-5f89a1beca86",
+          "author": "agent",
+          "type": "info",
+          "text": "Info örneği: liste elemanları artık ayrı review item olarak ele alınabiliyor.",
+          "seen": false,
+          "ts": "2026-06-04T06:57:57Z"
+        }
+      ],
+      "highlights": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "12b25aae8ec9": {
+      "id": "12b25aae8ec9",
+      "preview": "- İkinci liste elemanı da ayrı bir review item kimliği taşır.",
+      "annotations": [
+        {
+          "id": "d7f7e5bd-3259-4644-9886-8e684e5d65aa",
+          "author": "agent",
+          "type": "info",
+          "text": "Task örneği: bu maddeyi daha açıklayıcı hale getir.",
+          "seen": false,
+          "ts": "2026-06-04T06:57:57Z"
+        }
+      ],
+      "highlights": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "bc9ff4ee83d4": {
+      "id": "bc9ff4ee83d4",
+      "preview": "```python def normalize(text: str) -> str: return \" \".join(text.split()) ```",
+      "annotations": [
+        {
+          "id": "bd2c4b92-c653-4115-879f-5743df1c9eac",
+          "author": "agent",
+          "type": "error",
+          "text": "Reviewed error örneği: bu kutu kapatılmış bir bulguyu gösterir.",
+          "seen": true,
+          "ts": "2026-06-04T06:57:57Z"
+        }
+      ],
+      "highlights": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "f22c0b7a95ee": {
+      "id": "f22c0b7a95ee",
+      "preview": "Bu paragrafta özellikle **seçili kelimeler** ve `inline code` üzerinde highlight notları gösterilebilir.",
+      "annotations": [],
+      "highlights": [
+        {
+          "id": "a250e8d0-2cff-41ee-aa3d-631b74ed1a40",
+          "author": "user",
+          "style": "marker",
+          "selected_text": "seçili kelimeler",
+          "occurrence": 0,
+          "text": "Marker highlight: önemli ifadeyi görünür kılar.",
+          "ts": "2026-06-04T06:58:05Z"
+        },
+        {
+          "id": "d93c359b-7386-46e3-b33e-771cd79768da",
+          "author": "agent",
+          "style": "underline",
+          "selected_text": "inline code",
+          "occurrence": 0,
+          "text": "Underline highlight: kelime/terim açıklaması için iyi.",
+          "ts": "2026-06-04T06:58:05Z"
+        }
+      ],
+      "edits": [],
+      "suggestions": [
+        {
+          "id": "d8909aaa-0a06-44c7-86b0-c104b8bc88de",
+          "author": "agent",
+          "action": "inline_replace",
+          "anchor_id": "f22c0b7a95ee",
+          "raw": "inline suggestion notları",
+          "selected_text": "highlight notları",
+          "occurrence": 0,
+          "note": "Inline-replace örneği: yalnızca seçili ifade değişir.",
+          "status": "rejected",
+          "ts": "2026-06-04T07:26:14Z",
+          "applied_ts": null
+        }
+      ]
+    },
+    "d0f511afd7a9": {
+      "id": "d0f511afd7a9",
+      "preview": "Bu paragraf biraz zayıf yazıldı. Review sırasında replace önerisiyle daha net hale getirilebilir.",
+      "annotations": [],
+      "highlights": [],
+      "edits": [],
+      "suggestions": [
+        {
+          "id": "38e725a4-3744-4983-8975-5d18b0014b0c",
+          "author": "agent",
+          "action": "replace",
+          "anchor_id": "d0f511afd7a9",
+          "raw": "Bu paragraf, replace önerisinin nasıl çalıştığını göstermek için daha açık ve doğrudan yeniden yazıldı.",
+          "selected_text": "",
+          "occurrence": 0,
+          "note": "Replace önerisi: mevcut bloğun yerine bu metin geçer.",
+          "status": "open",
+          "ts": "2026-06-04T06:58:11Z",
+          "applied_ts": null
+        }
+      ]
+    },
+    "1e1ec886c273": {
+      "id": "1e1ec886c273",
+      "preview": "Bu paragrafın arkasına yeni bir paragraf ekleme önerisi var.",
+      "annotations": [],
+      "highlights": [],
+      "edits": [],
+      "suggestions": [
+        {
+          "id": "418cd6bb-258a-4d84-ac97-428d9ab5b7d5",
+          "author": "agent",
+          "action": "insert_after",
+          "anchor_id": "1e1ec886c273",
+          "raw": "Bu yeni paragraf, kabul edildiğinde iki paragraf arasına otomatik boşlukla eklenecek.",
+          "selected_text": "",
+          "occurrence": 0,
+          "note": "Insert-after önerisi: anchor item sonrasına yeni markdown ekler.",
+          "status": "accepted",
+          "ts": "2026-06-04T06:58:19Z",
+          "applied_ts": "2026-06-04T07:16:07Z"
+        }
+      ]
+    },
+    "4010accf130f": {
+      "id": "4010accf130f",
+      "preview": "Bu dosya markdown-review'un temel özelliklerini tek yerde göstermek için hazırlandı.",
+      "annotations": [],
+      "highlights": [],
+      "edits": [],
+      "suggestions": [
+        {
+          "id": "f5262978-932e-413e-9f2c-5a2c7f2247d2",
+          "author": "user",
+          "action": "replace",
+          "anchor_id": "4010accf130f",
+          "raw": "Bu reddedilecek örnek öneridir.",
+          "selected_text": "",
+          "occurrence": 0,
+          "note": "Rejected durumunu göstermek için eklendi.",
+          "status": "rejected",
+          "ts": "2026-06-04T06:58:26Z",
+          "applied_ts": null
+        },
+        {
+          "id": "94585771-1bdd-4a0b-add9-5344990c03bf",
+          "author": "user",
+          "action": "inline_replace",
+          "anchor_id": "4010accf130f",
+          "raw": "-review'un tem",
+          "selected_text": "-review'un tem",
+          "occurrence": 0,
+          "note": "",
+          "status": "rejected",
+          "ts": "2026-06-04T07:32:14Z",
+          "applied_ts": null
+        },
+        {
+          "id": "750b348a-35e0-4350-bd79-e9d20d67ea14",
+          "author": "user",
+          "action": "inline_replace",
+          "anchor_id": "4010accf130f",
+          "raw": "arkdown-review'ufff",
+          "selected_text": "arkdown-review'u",
+          "occurrence": 0,
+          "note": "",
+          "status": "rejected",
+          "ts": "2026-06-04T07:32:28Z",
+          "applied_ts": null
+        },
+        {
+          "id": "a4490757-2777-4765-9723-85036e66ba3c",
+          "author": "user",
+          "action": "inline_replace",
+          "anchor_id": "4010accf130f",
+          "raw": "i tek yerder",
+          "selected_text": "i tek yerde",
+          "occurrence": 0,
+          "note": "",
+          "status": "open",
+          "ts": "2026-06-04T07:44:53Z",
+          "applied_ts": null
+        }
+      ]
+    },
+    "14ee7f7d11a6": {
+      "id": "14ee7f7d11a6",
+      "preview": "Basit bir inline formül: $a^2 + b^2 = c^2$. Bu satır accepted suggestion ve version history örneği olarak güncellendi.",
+      "annotations": [],
+      "highlights": [],
+      "edits": [
+        {
+          "id": "00feacc0-c9fd-412e-9288-95701538c34b",
+          "author": "agent",
+          "old_id": "6dbfa0727d8f",
+          "new_id": "14ee7f7d11a6",
+          "before": "Basit bir inline formül: $a^2 + b^2 = c^2$.",
+          "after": "Basit bir inline formül: $a^2 + b^2 = c^2$. Bu satır accepted suggestion ve version history örneği olarak güncellendi.",
+          "ts": "2026-06-04T06:58:54Z"
+        }
+      ],
+      "suggestions": [
+        {
+          "id": "eaf4763e-6d81-4c10-94bb-d8419f338840",
+          "author": "agent",
+          "action": "replace",
+          "anchor_id": "6dbfa0727d8f",
+          "raw": "Basit bir inline formül: $a^2 + b^2 = c^2$. Bu satır accepted suggestion ve version history örneği olarak güncellendi.",
+          "selected_text": "",
+          "occurrence": 0,
+          "note": "Accepted örneği: kabul edilince item id değişir ve edit history oluşur.",
+          "status": "accepted",
+          "ts": "2026-06-04T06:58:45Z",
+          "applied_ts": "2026-06-04T06:58:54Z"
+        }
+      ]
+    }
+  },
+  "orphans": [
+    {
+      "paragraph_id": "499dda55d8d4",
+      "preview": "Bu paragraf orphan panelini göstermek için önce yorumlandı.",
+      "annotations": [
+        {
+          "id": "06fba0a7-f527-427b-bba8-7eddecda7148",
+          "author": "agent",
+          "type": "info",
+          "text": "Orphan örneği: bu yorum, paragraf dışarıdan değişince alttaki orphan paneline taşınacak.",
+          "seen": false,
+          "ts": "2026-06-04T06:59:29Z"
+        }
+      ],
+      "highlights": [],
+      "edits": [],
+      "suggestions": [],
+      "removed_at": "2026-06-04T06:59:41Z"
+    },
+    {
+      "paragraph_id": "442e66905dc4",
+      "preview": "Bu paragraf silme önerisini göstermek için duruyor.",
+      "annotations": [],
+      "highlights": [],
+      "edits": [],
+      "suggestions": [
+        {
+          "id": "a7e3e3e1-e4cd-4a1e-a2ee-148c3535a4fe",
+          "author": "agent",
+          "action": "delete",
+          "anchor_id": "442e66905dc4",
+          "raw": "",
+          "selected_text": "",
+          "occurrence": 0,
+          "note": "Delete önerisi: kabul edilirse bu item dosyadan kaldırılır.",
+          "status": "accepted",
+          "ts": "2026-06-04T06:58:19Z",
+          "applied_ts": "2026-06-04T07:16:23Z"
+        }
+      ],
+      "removed_at": "2026-06-04T07:16:23Z"
+    }
+  ]
+}

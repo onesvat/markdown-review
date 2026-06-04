@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>markdown-review</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+      integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+"
+      crossorigin="anonymous"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/marked@14.1.3/marked.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+      integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+      integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk"
+      crossorigin="anonymous"
+    ></script>
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">markdown-review</div>
+      <div class="doc-path" id="doc-path">—</div>
+      <div class="mode-toggle">
+        <span class="mode-label">Mode:</span>
+        <button id="mode-user" class="mode-btn active" data-mode="user">user</button>
+        <button id="mode-agent" class="mode-btn" data-mode="agent">agent</button>
+      </div>
+      <div class="highlight-toggle">
+        <span class="mode-label">Highlight:</span>
+        <button class="highlight-mode-btn active" data-highlight-style="marker">marker</button>
+        <button class="highlight-mode-btn" data-highlight-style="underline">underline</button>
+      </div>
+      <button id="reload-btn" class="reload-btn" title="Re-parse the doc">↻ reload</button>
+    </header>
+    <main id="content">
+      <div class="loading">loading…</div>
+    </main>
+    <section id="orphans" class="orphans hidden">
+      <h2>Orphaned annotations</h2>
+      <p class="hint">
+        These annotations were attached to paragraphs that no longer match the current doc.
+        Edit the paragraph back to its original text to recover them, or delete via the JSON file.
+      </p>
+      <div id="orphan-list"></div>
+    </section>
+  </body>
+</html>
