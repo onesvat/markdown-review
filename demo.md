@@ -1,42 +1,41 @@
 # markdown-review demo
 
-Bu dosya markdown-review'un temel özelliklerini tek yerde göstermek için hazırlandı.
+This file demonstrates the core features of markdown-review in one place.
 
-## 1. Blok bazlı review
+## 1. Block-level review
 
-Her paragraf, başlık, liste elemanı, kod bloğu ve tablo kendi review item kimliğini alır. Bu paragrafın üzerinde hem yorum hem highlight örneği var.
+Every paragraph, heading, list item, code block, and table gets its own review item identity. This paragraph has both a user comment and agent highlights.
 
-- İlk liste elemanı ayrı bir review item olarak yorumlanabilir.
-- İkinci liste elemanı da ayrı bir review item kimliği taşır.
+- The first list item can be annotated as a separate review item.
+- The second list item also carries its own review item identity.
 
-## 2. Highlight örnekleri
+## 2. Highlights
 
-Bu paragrafta özellikle **seçili kelimeler** ve `inline code` üzerinde highlight notları gösterilebilir.
+This paragraph specifically has **selected words** and `inline code` with highlight notes attached.
 
-## 3. Öneri akışı
+## 3. Suggestion flow
 
-Bu paragraf biraz zayıf yazıldı. Review sırasında replace önerisiyle daha net hale getirilebilir.
+This paragraph is a bit weakly written. During review it can be improved with a replace suggestion.
 
-Bu paragrafın arkasına yeni bir paragraf ekleme önerisi var.
+This paragraph has an insert-after suggestion behind it.
 
-Bu yeni paragraf, kabul edildiğinde iki paragraf arasına otomatik boşlukla eklenecek.
+This new paragraph was inserted by accepting the suggestion above.
 
-
-## 4. Kod ve tablo
+## 4. Code and tables
 
 ```python
 def normalize(text: str) -> str:
     return " ".join(text.split())
 ```
 
-| Özellik | Durum |
+| Feature | Status |
 |---|---|
-| Annotation | Var |
-| Highlight | Var |
-| Suggestion | Var |
+| Annotation | Yes |
+| Highlight | Yes |
+| Suggestion | Yes |
 
-## 5. Matematik
+## 5. Math
 
-Basit bir inline formül: $a^2 + b^2 = c^2$. Bu satır accepted suggestion ve version history örneği olarak güncellendi.
+A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.
 
-Bu paragraf dışarıdan değiştirildiği için eski yorum orphan paneline taşınır.
+This paragraph was edited externally so its old comment moved to the orphan panel.

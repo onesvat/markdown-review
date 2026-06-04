@@ -10,41 +10,47 @@ A block-level Markdown review tool that renders any `.md` file in a local web UI
 
 Run `markdown-review demo.md` to see it live — `demo.md` comes pre-seeded with examples of every feature.
 
-### Block-level review
+### Annotations
 
-Each paragraph, heading, list item, code block, and table gets its own review item. User and agent annotations appear alongside the content.
+User and agent annotations appear below each review item, color-coded by author and type (`info`, `error`, `task`, `comment`).
 
-![Block-level review: annotations on paragraphs, headings, and list items](docs/01-block-review.png)
+![Annotations on a review item: user comment and agent info note](docs/01-annotations.png)
 
 ### Highlights
 
-Marker highlights draw attention to important phrases. Underline highlights gloss difficult terms — hover to see the note.
+Marker highlights (solid background) draw attention. Underline highlights (dotted) gloss terms — hover to see the note.
 
-![Highlight examples: marker and underline with hover notes](docs/02-highlights.png)
+![Inline highlights: marker and underline with hover tooltips](docs/02-highlights.png)
 
-### Suggestions — replace
+### Suggestions — open
 
-Propose a full block replacement. Accept or reject without touching the file.
+Propose a replacement without touching the file. Accept or reject from the suggestion panel.
 
-![Replace suggestion on a paragraph](docs/03a-suggestion-replace.png)
+![Open replace suggestion with proposed text](docs/03a-suggestion-open.png)
 
-### Suggestions — insert
+### Suggestions — accepted
 
-Insert new content before or after any block. Accepted insertions show inline with version tracking.
+Accepted suggestions apply to the file and show their applied status inline. The tool tracks `before → after` version history.
 
-![Insert-after suggestion, accepted and applied](docs/03b-suggestion-insert.png)
+![Accepted suggestion showing applied status](docs/03b-suggestion-accepted.png)
 
-### Code blocks & tables
+### Code review
 
-Code blocks and tables are first-class review items — annotate, highlight, and suggest changes just like paragraphs.
+Code blocks are first-class review items. Annotate them with `error`, `info`, or any type — just like prose paragraphs.
 
-![Code block with error annotation and data table](docs/04-code-table.png)
+![Code block with error annotation](docs/04-code-error.png)
 
-### Math & version history
+### Math & edit history
 
-KaTeX math renders natively. When suggestions are accepted, the tool tracks `before → after` version history per item.
+KaTeX renders natively. When source changes through the tool, version history records every `before → after` edit.
 
-![Inline math rendering with suggestion history and version tracking](docs/05-math.png)
+![Inline math with edit history tracking](docs/05-math-version.png)
+
+### Orphan tracking
+
+If an item disappears from the source (e.g. edited outside the tool), its review data moves to the orphan panel instead of being lost.
+
+![Orphan panel preserving review data for removed items](docs/06-orphans.png)
 
 ---
 
