@@ -12,33 +12,39 @@ Run `markdown-review demo.md` to see it live — `demo.md` comes pre-seeded with
 
 ### Block-level review
 
-Each paragraph, heading, list item, code block, and table gets its own review item with annotations, highlights, and suggestions.
+Each paragraph, heading, list item, code block, and table gets its own review item. User and agent annotations appear alongside the content.
 
-![Block-level review with annotations on paragraphs and list items](docs/01-block-review.png)
+![Block-level review: annotations on paragraphs, headings, and list items](docs/01-block-review.png)
 
 ### Highlights
 
 Marker highlights draw attention to important phrases. Underline highlights gloss difficult terms — hover to see the note.
 
-![Highlight examples: marker and underline styles](docs/02-highlights.png)
+![Highlight examples: marker and underline with hover notes](docs/02-highlights.png)
 
-### Suggestions
+### Suggestions — replace
 
-Propose source changes without touching the file. `replace`, `delete`, `insert_before`, `insert_after`, `inline_replace` — accept or reject from the UI.
+Propose a full block replacement. Accept or reject without touching the file.
 
-![Suggestion examples: replace and inline-replace with accept/reject](docs/03-suggestions.png)
+![Replace suggestion on a paragraph](docs/03a-suggestion-replace.png)
+
+### Suggestions — insert
+
+Insert new content before or after any block. Accepted insertions show inline with version tracking.
+
+![Insert-after suggestion, accepted and applied](docs/03b-suggestion-insert.png)
 
 ### Code blocks & tables
 
-Code blocks and tables are first-class review items — comment on them just like paragraphs.
+Code blocks and tables are first-class review items — annotate, highlight, and suggest changes just like paragraphs.
 
-![Code blocks and tables with review annotations](docs/04-code-table.png)
+![Code block with error annotation and data table](docs/04-code-table.png)
 
-### Math
+### Math & version history
 
-Inline and display KaTeX math renders natively. Accepted suggestions track version history.
+KaTeX math renders natively. When suggestions are accepted, the tool tracks `before → after` version history per item.
 
-![Math rendering with suggestion history](docs/05-math.png)
+![Inline math rendering with suggestion history and version tracking](docs/05-math.png)
 
 ---
 
