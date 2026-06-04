@@ -8,11 +8,37 @@ A block-level Markdown review tool that renders any `.md` file in a local web UI
 
 ## What does it look like?
 
-![markdown-review UI showing demo.md with annotations, highlights, and suggestions](docs/demo-screenshot.png)
+Run `markdown-review demo.md` to see it live — `demo.md` comes pre-seeded with examples of every feature.
 
-<p align="center">
-  <em>Run <code>markdown-review demo.md</code> to see it live — <code>demo.md</code> is pre-seeded with annotations, highlights, and suggestions.</em>
-</p>
+### Block-level review
+
+Each paragraph, heading, list item, code block, and table gets its own review item with annotations, highlights, and suggestions.
+
+![Block-level review with annotations on paragraphs and list items](docs/01-block-review.png)
+
+### Highlights
+
+Marker highlights draw attention to important phrases. Underline highlights gloss difficult terms — hover to see the note.
+
+![Highlight examples: marker and underline styles](docs/02-highlights.png)
+
+### Suggestions
+
+Propose source changes without touching the file. `replace`, `delete`, `insert_before`, `insert_after`, `inline_replace` — accept or reject from the UI.
+
+![Suggestion examples: replace and inline-replace with accept/reject](docs/03-suggestions.png)
+
+### Code blocks & tables
+
+Code blocks and tables are first-class review items — comment on them just like paragraphs.
+
+![Code blocks and tables with review annotations](docs/04-code-table.png)
+
+### Math
+
+Inline and display KaTeX math renders natively. Accepted suggestions track version history.
+
+![Math rendering with suggestion history](docs/05-math.png)
 
 ---
 
@@ -21,21 +47,9 @@ A block-level Markdown review tool that renders any `.md` file in a local web UI
 | Problem | markdown-review |
 |---|---|
 | Review comments scattered across GitHub issues, Slack, and email | Everything lives in one sidecar JSON, next to the doc |
-| Can't comment on individual list items or code blocks | Every block gets its own review ID — paragraphs, headings, lists, code, tables, equations |
+| Can't comment on individual list items or code blocks | Every block gets its own review ID |
 | No history of what changed | Edits track `before → after` with IDs and timestamps |
-| AI agent has no structured way to reply | `markdown-review add` + `--author agent` gives AI a clean API for annotations |
-
----
-
-## Features
-
-- **Block-level items** — each paragraph, heading, list item, code block, table, figure, and equation gets its own review identity
-- **Annotations** — leave `info`, `error`, `task`, or `comment` notes on any item
-- **Highlights** — marker or underline spans with hover text, perfect for glossing difficult terms
-- **Suggestions** — propose `replace`, `delete`, `insert_before`, `insert_after`, or `inline_replace`; accept/reject without touching the file
-- **Agent-ready** — CLI and HTTP API designed for AI agents to read, annotate, and suggest changes
-- **Orphan tracking** — if an item disappears from the source, its review data moves to `orphans` instead of being lost
-- **sidecar JSON** — all review data in `<doc>.annotations.json`, version-controllable alongside your docs
+| AI agent has no structured way to reply | `markdown-review add` + `--author agent` gives AI a clean API |
 
 ---
 
