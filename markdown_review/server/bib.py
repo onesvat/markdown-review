@@ -7,6 +7,7 @@ author-year label with a hover tooltip.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -132,7 +133,14 @@ def _bib_paths_for(doc_path: Path) -> list[Path]:
 
 def load_citations(doc_path: Path) -> dict[str, dict[str, str]]:
     merged: dict[str, dict[str, str]] = {}
-    for bib in _bib_paths_for(doc_path):
+    bib_paths = list(_bib_paths_for(doc_path))
+    extra = os.environ.get("MDR_BIB", "")
+    if extra:
+        for p in extra.split(os.pathsep):
+            bp = Path(p)
+            if bp.exists() and bp not in bib_paths:
+                bib_paths.append(bp)
+    for bib in bib_paths:
         try:
             merged.update(parse_bibtex(bib.read_text(encoding="utf-8")))
         except OSError:

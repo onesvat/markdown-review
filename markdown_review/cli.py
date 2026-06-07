@@ -129,6 +129,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
     if doc_path is not None:
         os.environ["MDR_DEFAULT_DOC"] = str(doc_path)
 
+    if args.bib:
+        os.environ["MDR_BIB"] = os.pathsep.join(str(Path(b).expanduser().resolve()) for b in args.bib)
+
     if not args.no_open:
         browser_host = "127.0.0.1" if host == "0.0.0.0" else host
         if doc_path is not None:
@@ -478,7 +481,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("path", nargs="?", help="Markdown file to open (optional)")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8765)
-    p_serve.add_argument("--no-open", action="store_true", help="Do not open browser")
+    p_serve.add_argument("--bib", nargs="*", help="Additional .bib file(s) for citation tooltips")
     p_serve.set_defaults(func=cmd_serve)
 
     p_new = sub.add_parser("new", help="List unseen annotations in a doc")
