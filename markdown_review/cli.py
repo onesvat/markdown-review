@@ -104,28 +104,38 @@ def _resolve_doc_arg(raw: str) -> Path:
 def cmd_serve(args: argparse.Namespace) -> int:
     host = args.host
     port = args.port
-    doc_path: Path | None = _resolve_doc_arg(args.path) if args.path else None
 
-    # The document dropdown (and ?path= navigation) is restricted to this folder
-    # and its subfolders. Default to the launch folder; if an opened doc lives
-    # outside it, widen the root to that doc's folder so it remains reachable.
-    root = Path.cwd().resolve()
-    if doc_path is not None:
-        try:
-            doc_path.relative_to(root)
-        except ValueError:
-            root = doc_path.parent
+    if args.path:
+        p = Path(args.path).expanduser().resolve()
+        if not p.exists():
+            print(f"error: file not found: {p}", file=sys.stderr)
+            sys.exit(2)
+        if p.is_dir():
+            doc_path = None
+            root = p
+        else:
+            doc_path = _resolve_doc_arg(args.path)
+            root = Path.cwd().resolve()
+            try:
+                doc_path.relative_to(root)
+            except ValueError:
+                root = doc_path.parent
+    else:
+        doc_path = None
+        root = Path.cwd().resolve()
+
     os.environ["MDR_ROOT"] = str(root)
 
     if doc_path is not None:
-        # The server reads this env var to auto-redirect `/` → `/?path=...` when
-        # the client connects without specifying a path (e.g. from another host).
         os.environ["MDR_DEFAULT_DOC"] = str(doc_path)
 
-    if doc_path is not None and not args.no_open:
+    if not args.no_open:
         browser_host = "127.0.0.1" if host == "0.0.0.0" else host
-        qs = urllib.parse.urlencode({"path": str(doc_path)})
-        _open_browser_when_ready(f"http://{browser_host}:{port}/?{qs}")
+        if doc_path is not None:
+            qs = urllib.parse.urlencode({"path": str(doc_path)})
+            _open_browser_when_ready(f"http://{browser_host}:{port}/?{qs}")
+        else:
+            _open_browser_when_ready(f"http://{browser_host}:{port}/")
 
     uvicorn.run(
         "markdown_review.server.main:app",
