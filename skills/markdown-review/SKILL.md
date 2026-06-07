@@ -49,14 +49,18 @@ Leave new agent annotations unseen so the user can find them.
 - Review items may be paragraphs, headings, list items, code blocks, tables, figures, equations, blockquotes, or other rendered blocks.
 - The JSON/API field `paragraph_id` means review item ID for compatibility.
 - IDs are content-derived. If source changes, the item ID can change.
-- Authors are `user` for the human reviewer and `agent` for Codex.
+- Authors are free-form reviewer names. Use `agent` for Codex; humans pick their own name. Each name gets its own rotating marker color in the UI.
 - Annotation types are `comment`, `info`, `error`, and `task`.
+- Annotations may carry a `selected_text` span; when present they also render inline as a marker over that text (this is what used to be a separate "highlight").
 - Annotation state is only `seen: true|false`; do not create new status fields.
+- Supported document formats are `.md`, `.markdown`, and `.qmd`.
 - Missing items with review data become `orphans` after reconciliation.
 
 ## Highlights
 
-Use highlights for short selected rendered text spans, not whole-block comments.
+A highlight is just an annotation that carries a `selected_text` span: it shows
+as a comment card on the item and also renders inline as a marker over the span.
+Use it for short selected rendered text, not whole-block comments.
 
 ```bash
 markdown-review highlight \
@@ -64,7 +68,7 @@ markdown-review highlight \
   --item-id <item_id> \
   --selected-text "exact visible text span" \
   --occurrence 0 \
-  --style underline \
+  --type comment \
   --author agent \
   --text "Hover note"
 ```
@@ -115,7 +119,8 @@ Direct JSON edits are acceptable only for careful bulk work where the CLI cannot
 
 - Use uuid4 IDs.
 - Anything written by Codex must use `author: agent`.
-- Preserve existing annotations, highlights, suggestions, edits, and orphans.
+- Preserve existing annotations, suggestions, edits, and orphans.
+- There is no separate `highlights` array. A highlight is an annotation with a `selected_text` (and optional `occurrence`) field; write it inside `annotations`. Legacy `highlights` arrays are migrated to annotations automatically on load.
 - Do not delete user annotations. Reply, then mark them seen when addressed.
 - Prefer suggestions over direct Markdown edits when the source change should be reviewed.
 
@@ -128,7 +133,7 @@ Direct JSON edits are acceptable only for careful bulk work where the CLI cannot
 | List unseen annotations | `markdown-review new <doc.md> --json` |
 | Add annotation | `markdown-review add --path <doc.md> --item-id <id> --author agent --type info\|error\|task\|comment --text "..."` |
 | Mark seen/unseen | `markdown-review mark-seen <id> --path <doc.md>` / `markdown-review mark-unseen <id> --path <doc.md>` |
-| Highlight | `markdown-review highlight --path <doc.md> --item-id <id> --selected-text "..." --style marker\|underline --text "..."` |
+| Highlight | `markdown-review highlight --path <doc.md> --item-id <id> --selected-text "..." --type info\|error\|task\|comment --text "..."` |
 | Suggest source change | `markdown-review suggest --path <doc.md> --item-id <id> --author agent --action replace\|delete\|insert-before\|insert-after\|inline-replace ...` |
 | List suggestions | `markdown-review suggestions <doc.md> --json` |
 | Delete own note | `markdown-review delete <id> --path <doc.md>` |

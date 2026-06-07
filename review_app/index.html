@@ -32,16 +32,13 @@
   <body>
     <header class="topbar">
       <div class="brand">markdown-review</div>
-      <div class="doc-path" id="doc-path">—</div>
-      <div class="mode-toggle">
-        <span class="mode-label">Mode:</span>
-        <button id="mode-user" class="mode-btn active" data-mode="user">user</button>
-        <button id="mode-agent" class="mode-btn" data-mode="agent">agent</button>
+      <div class="file-picker">
+        <span class="mode-label">File:</span>
+        <select id="file-select" class="file-select" title="Pick a document in this folder"></select>
       </div>
-      <div class="highlight-toggle">
-        <span class="mode-label">Highlight:</span>
-        <button class="highlight-mode-btn active" data-highlight-style="marker">marker</button>
-        <button class="highlight-mode-btn" data-highlight-style="underline">underline</button>
+      <div class="name-field">
+        <span class="mode-label">Name:</span>
+        <input id="name-input" class="name-input" type="text" placeholder="your name" autocomplete="off" />
       </div>
       <button id="reload-btn" class="reload-btn" title="Re-parse the doc">↻ reload</button>
     </header>

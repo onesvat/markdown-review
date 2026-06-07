@@ -61,13 +61,15 @@ body {
   white-space: nowrap;
 }
 
-.mode-toggle {
+.file-picker {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
-.highlight-toggle {
+.name-field {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -78,44 +80,34 @@ body {
   color: var(--fg-muted);
 }
 
-.mode-btn,
-.highlight-mode-btn {
+.file-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  max-width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+.name-input {
   font: inherit;
   font-size: 12px;
   padding: 4px 10px;
-  border-radius: 999px;
+  width: 130px;
+  border-radius: 6px;
   border: 1px solid var(--border-strong);
   background: var(--bg);
-  color: var(--fg-muted);
-  cursor: pointer;
+  color: var(--fg);
 }
 
-.highlight-mode-btn {
-  border-radius: 6px;
-}
-
-.mode-btn[data-mode="user"].active {
-  background: var(--user-bg);
-  border-color: var(--user-border);
-  color: var(--user-fg);
-}
-
-.mode-btn[data-mode="agent"].active {
-  background: var(--agent-bg);
-  border-color: var(--agent-border);
-  color: var(--agent-fg);
-}
-
-.highlight-mode-btn[data-highlight-style="marker"].active {
-  background: #fef3c7;
-  border-color: #f59e0b;
-  color: #78350f;
-}
-
-.highlight-mode-btn[data-highlight-style="underline"].active {
-  background: #f1f5f9;
-  border-color: #64748b;
-  color: #334155;
+.name-input:focus {
+  outline: none;
+  border-color: var(--fg-muted);
 }
 
 .reload-btn {
@@ -264,16 +256,12 @@ main {
 }
 
 .mdr-highlight {
+  /* Color is set inline per author (colorForName); these are only fallbacks. */
   --highlight-color: rgba(245, 158, 11, 0.38);
   --highlight-strong: #d97706;
   position: relative;
   border-radius: 3px;
   cursor: help;
-}
-
-.mdr-highlight.agent {
-  --highlight-color: rgba(99, 102, 241, 0.28);
-  --highlight-strong: #4f46e5;
 }
 
 .mdr-highlight.marker {
@@ -286,17 +274,6 @@ main {
   border-radius: 3px;
 }
 
-.mdr-highlight.underline {
-  /* Dotted line drawn as the inline box's bottom border, which sits below the
-     g/y descender tails so it never crosses them. */
-  background: transparent;
-  border-bottom: 2px dotted var(--highlight-strong);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  text-decoration: none;
-}
-
-/* Hover/focus outline ("border") is reserved for marker highlights only. */
 .mdr-highlight.marker:hover,
 .mdr-highlight.marker:focus {
   outline: 1px solid var(--highlight-strong);
@@ -397,12 +374,41 @@ main {
   box-shadow: 0 16px 40px rgba(28, 25, 23, 0.18);
 }
 
-.highlight-popover[data-author="user"] {
-  border-top: 3px solid var(--user-border);
+.highlight-popover {
+  border-top: 3px solid var(--author-strong, var(--fg));
 }
 
-.highlight-popover[data-author="agent"] {
-  border-top: 3px solid var(--agent-border);
+.hp-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.hp-tab {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--bg);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.hp-tab.active {
+  background: var(--bg-card);
+  color: var(--fg);
+  border-color: var(--author-strong, var(--fg));
+}
+
+.hp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-strong);
 }
 
 .highlight-popover-meta,
@@ -871,20 +877,12 @@ main {
   padding: 8px 10px;
   margin: 6px 0;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  /* Background/border tint comes from the author's rotating color (set inline
+     via --author-* custom properties); the left border comes from the type. */
+  background: var(--author-bg, var(--bg-card));
+  border: 1px solid var(--author-border, var(--border));
+  color: var(--author-fg, var(--fg));
   font-size: 14px;
-}
-
-.annotation.user {
-  background: var(--user-bg);
-  border-color: var(--user-border);
-  color: var(--user-fg);
-}
-
-.annotation.agent {
-  background: var(--agent-bg);
-  border-color: var(--agent-border);
-  color: var(--agent-fg);
 }
 
 /* Type accent — drives the left border and the type chip color. */
@@ -942,6 +940,29 @@ main {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.annotation-ts {
+  margin-left: 6px;
+}
+
+.annotation-anchor {
+  margin: 2px 0 6px;
+  padding: 3px 8px;
+  border-left: 3px solid var(--author-strong, var(--border-strong));
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 12px;
+  border-radius: 0 4px 4px 0;
+  word-break: break-word;
+}
+
+.annotation-anchor::before {
+  content: "“";
+}
+
+.annotation-anchor::after {
+  content: "”";
 }
 
 .annotation-text {

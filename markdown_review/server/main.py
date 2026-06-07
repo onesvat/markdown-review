@@ -16,13 +16,11 @@ from .schemas import (
     ApplySuggestionBody,
     ApplySuggestionResponse,
     CreateAnnotationBody,
-    CreateHighlightBody,
     CreateSuggestionBody,
     DocResponse,
     EditItemBody,
     EditItemResponse,
     EditRevision,
-    Highlight,
     ParagraphRecord,
     Suggestion,
     UpdateAnnotationBody,
@@ -34,7 +32,6 @@ from .storage import (
     annotations_path_for,
     doc_file_lock,
     find_annotation,
-    find_highlight,
     find_suggestion,
     has_review_data,
     load_annotations,
@@ -46,6 +43,13 @@ from .storage import (
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
 REVIEW_APP_DIR = PACKAGE_ROOT / "review_app"
 
+# Markdown-family documents the review tool will open.
+DOC_SUFFIXES = {".md", ".markdown", ".qmd"}
+
+
+def _review_root() -> Path:
+    return Path(os.environ.get("MDR_ROOT") or os.getcwd()).resolve()
+
 
 def _resolve_doc(path: str) -> Path:
     p = Path(path).expanduser()
@@ -54,8 +58,15 @@ def _resolve_doc(path: str) -> Path:
     p = p.resolve()
     if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail=f"file not found: {p}")
-    if p.suffix.lower() not in {".md", ".markdown"}:
-        raise HTTPException(status_code=400, detail="only markdown files supported")
+    if p.suffix.lower() not in DOC_SUFFIXES:
+        raise HTTPException(status_code=400, detail="only markdown (.md/.markdown/.qmd) files supported")
+    # Sandbox: only documents under the launch folder (and its subfolders) may be
+    # opened, so the dropdown and ?path= navigation cannot escape that tree.
+    root = _review_root()
+    try:
+        p.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="document is outside the review folder")
     return p
 
 
@@ -141,7 +152,6 @@ def _replace_item_source(
     existing = ann.paragraphs.get(new_id)
     if existing and existing is not rec:
         existing.annotations.extend(rec.annotations)
-        existing.highlights.extend(rec.highlights)
         existing.edits.extend(rec.edits)
         existing.suggestions.extend(rec.suggestions)
         existing.preview = rec.preview
@@ -304,7 +314,6 @@ def create_app() -> FastAPI:
                 for b in blocks:
                     if b.paragraph_id and b.paragraph_id in ann.paragraphs:
                         b.annotations = ann.paragraphs[b.paragraph_id].annotations
-                        b.highlights = ann.paragraphs[b.paragraph_id].highlights
                         b.edits = ann.paragraphs[b.paragraph_id].edits
                         b.suggestions = ann.paragraphs[b.paragraph_id].suggestions
 
@@ -336,32 +345,14 @@ def create_app() -> FastAPI:
                     author=body.author,
                     type=body.type,
                     text=body.text,
+                    selected_text=body.selected_text,
+                    occurrence=body.occurrence,
                     seen=body.seen,
                     ts=utcnow_iso(),
                 )
                 rec.annotations.append(new_ann)
                 save_annotations(doc, ann)
                 return new_ann
-
-    @app.post("/api/highlights", response_model=Highlight)
-    async def create_highlight(body: CreateHighlightBody) -> Highlight:
-        doc = _resolve_doc(body.path)
-        async with locks.lock(doc):
-            with doc_file_lock(doc):
-                ann = load_annotations(doc)
-                rec = _ensure_record_from_live(ann, doc, body.paragraph_id)
-                highlight = Highlight(
-                    id=str(uuid.uuid4()),
-                    author=body.author,
-                    style=body.style,
-                    selected_text=body.selected_text,
-                    occurrence=body.occurrence,
-                    text=body.text,
-                    ts=utcnow_iso(),
-                )
-                rec.highlights.append(highlight)
-                save_annotations(doc, ann)
-                return highlight
 
     @app.patch("/api/items/source", response_model=EditItemResponse)
     async def edit_item_source(body: EditItemBody) -> EditItemResponse:
@@ -470,19 +461,25 @@ def create_app() -> FastAPI:
                 save_annotations(doc, ann)
                 return {"ok": True}
 
-    @app.delete("/api/highlights/{highlight_id}")
-    async def delete_highlight(highlight_id: str, path: str = Query(...)) -> dict[str, bool]:
-        doc = _resolve_doc(path)
-        async with locks.lock(doc):
-            with doc_file_lock(doc):
-                ann = load_annotations(doc)
-                found = find_highlight(ann, highlight_id)
-                if not found:
-                    raise HTTPException(status_code=404, detail="highlight not found")
-                para, _ = found
-                para.highlights = [h for h in para.highlights if h.id != highlight_id]
-                save_annotations(doc, ann)
-                return {"ok": True}
+    # ---------------- file listing (for the document dropdown) ----------------
+
+    @app.get("/api/files")
+    async def list_files() -> JSONResponse:
+        """List markdown files under the launch folder (and subfolders) for the dropdown."""
+        root = _review_root()
+        skip_dirs = {
+            ".git", ".venv", "venv", "node_modules", "__pycache__", "dist", ".pytest_cache",
+            "_build", "build", "_site", ".quarto", "site",
+        }
+        files: list[dict[str, str]] = []
+        if root.is_dir():
+            for p in sorted(root.rglob("*")):
+                if p.suffix.lower() not in DOC_SUFFIXES or not p.is_file():
+                    continue
+                if any(part in skip_dirs or part.startswith(".") for part in p.relative_to(root).parts[:-1]):
+                    continue
+                files.append({"path": str(p), "name": str(p.relative_to(root))})
+        return JSONResponse({"root": str(root), "files": files})
 
     # ---------------- figures (relative to doc dir) ----------------
     #

@@ -17,7 +17,6 @@ except ImportError:  # pragma: no cover - non-POSIX fallback
 from .schemas import (
     Annotation,
     AnnotationsFile,
-    Highlight,
     OrphanRecord,
     ParagraphRecord,
     Suggestion,
@@ -95,7 +94,7 @@ def mutate_annotations(doc_path: Path, fn: "Callable[[AnnotationsFile], T]") -> 
 
 
 def record_has_review_data(rec: ParagraphRecord | OrphanRecord) -> bool:
-    return bool(rec.annotations or rec.highlights or rec.edits or rec.suggestions)
+    return bool(rec.annotations or rec.edits or rec.suggestions)
 
 
 def has_review_data(ann: AnnotationsFile) -> bool:
@@ -117,14 +116,6 @@ def find_annotation(ann: AnnotationsFile, annotation_id: str) -> tuple[Paragraph
         for a in para.annotations:
             if a.id == annotation_id:
                 return para, a
-    return None
-
-
-def find_highlight(ann: AnnotationsFile, highlight_id: str) -> tuple[ParagraphRecord, Highlight] | None:
-    for para in ann.paragraphs.values():
-        for h in para.highlights:
-            if h.id == highlight_id:
-                return para, h
     return None
 
 
@@ -154,7 +145,6 @@ def reconcile_with_live(ann: AnnotationsFile, live_paragraph_ids: dict[str, str]
                     paragraph_id=pid,
                     preview=rec.preview,
                     annotations=rec.annotations,
-                    highlights=rec.highlights,
                     edits=rec.edits,
                     suggestions=rec.suggestions,
                 )

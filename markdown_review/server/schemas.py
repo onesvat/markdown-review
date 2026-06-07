@@ -6,8 +6,9 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
 
-Author = Literal["user", "agent"]
-HighlightStyle = Literal["marker", "underline"]
+# Author is a free-form reviewer name. Each distinct name is assigned a rotating
+# marker color in the UI; there is no fixed set of authors anymore.
+Author = str
 AnnotationType = Literal["info", "error", "task", "comment"]
 SuggestionAction = Literal["replace", "delete", "insert_before", "insert_after", "inline_replace"]
 SuggestionStatus = Literal["open", "accepted", "rejected"]
@@ -22,6 +23,10 @@ class Annotation(BaseModel):
     author: Author
     type: AnnotationType = "comment"
     text: str
+    # When set, the annotation also renders inline as a marker over this exact
+    # visible text span (formerly a separate "highlight" entity).
+    selected_text: str = ""
+    occurrence: int = 0
     seen: bool = False
     ts: str = Field(default_factory=utcnow_iso)
 
@@ -34,14 +39,37 @@ class Annotation(BaseModel):
         return data
 
 
-class Highlight(BaseModel):
-    id: str
-    author: Author
-    style: HighlightStyle = "marker"
-    selected_text: str
-    occurrence: int = 0
-    text: str
-    ts: str = Field(default_factory=utcnow_iso)
+def _migrate_highlights_to_annotations(data):
+    """Fold legacy `highlights` records into `annotations` with selected_text.
+
+    Highlights used to be a separate entity with a marker/underline `style`.
+    They are now ordinary annotations that carry a `selected_text` span, so old
+    sidecar files are upgraded transparently on load.
+    """
+    if not isinstance(data, dict) or "highlights" not in data:
+        return data
+    data = dict(data)
+    legacy = data.pop("highlights") or []
+    annotations = list(data.get("annotations") or [])
+    for h in legacy:
+        if not isinstance(h, dict):
+            continue
+        migrated = {
+            "id": h.get("id"),
+            "author": h.get("author", "user"),
+            "type": "comment",
+            "text": h.get("text", ""),
+            "selected_text": h.get("selected_text", ""),
+            "occurrence": h.get("occurrence", 0),
+            "seen": False,
+        }
+        # Only carry ts when present; otherwise let the default factory stamp it
+        # (passing ts=None would fail validation).
+        if h.get("ts"):
+            migrated["ts"] = h["ts"]
+        annotations.append(migrated)
+    data["annotations"] = annotations
+    return data
 
 
 class EditRevision(BaseModel):
@@ -72,19 +100,27 @@ class ParagraphRecord(BaseModel):
     id: str
     preview: str
     annotations: list[Annotation] = Field(default_factory=list)
-    highlights: list[Highlight] = Field(default_factory=list)
     edits: list[EditRevision] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_highlights(cls, data):
+        return _migrate_highlights_to_annotations(data)
 
 
 class OrphanRecord(BaseModel):
     paragraph_id: str
     preview: str
     annotations: list[Annotation] = Field(default_factory=list)
-    highlights: list[Highlight] = Field(default_factory=list)
     edits: list[EditRevision] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
     removed_at: str = Field(default_factory=utcnow_iso)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_highlights(cls, data):
+        return _migrate_highlights_to_annotations(data)
 
 
 class AnnotationsFile(BaseModel):
@@ -103,7 +139,6 @@ class Block(BaseModel):
     source_start_line: Optional[int] = None
     source_end_line: Optional[int] = None
     annotations: list[Annotation] = Field(default_factory=list)
-    highlights: list[Highlight] = Field(default_factory=list)
     edits: list[EditRevision] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
 
@@ -120,6 +155,8 @@ class CreateAnnotationBody(BaseModel):
     text: str
     author: Author
     type: AnnotationType = "comment"
+    selected_text: str = ""
+    occurrence: int = 0
     seen: bool = False
 
 
@@ -128,16 +165,6 @@ class UpdateAnnotationBody(BaseModel):
     seen: Optional[bool] = None
     text: Optional[str] = None
     type: Optional[AnnotationType] = None
-
-
-class CreateHighlightBody(BaseModel):
-    path: str
-    paragraph_id: str
-    selected_text: str
-    occurrence: int = 0
-    text: str
-    author: Author
-    style: HighlightStyle = "marker"
 
 
 class EditItemBody(BaseModel):

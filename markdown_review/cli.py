@@ -95,8 +95,8 @@ def _resolve_doc_arg(raw: str) -> Path:
     if not p.exists():
         print(f"error: file not found: {p}", file=sys.stderr)
         sys.exit(2)
-    if p.suffix.lower() not in {".md", ".markdown"}:
-        print(f"error: only markdown files supported: {p}", file=sys.stderr)
+    if p.suffix.lower() not in {".md", ".markdown", ".qmd"}:
+        print(f"error: only markdown (.md/.markdown/.qmd) files supported: {p}", file=sys.stderr)
         sys.exit(2)
     return p
 
@@ -105,6 +105,17 @@ def cmd_serve(args: argparse.Namespace) -> int:
     host = args.host
     port = args.port
     doc_path: Path | None = _resolve_doc_arg(args.path) if args.path else None
+
+    # The document dropdown (and ?path= navigation) is restricted to this folder
+    # and its subfolders. Default to the launch folder; if an opened doc lives
+    # outside it, widen the root to that doc's folder so it remains reachable.
+    root = Path.cwd().resolve()
+    if doc_path is not None:
+        try:
+            doc_path.relative_to(root)
+        except ValueError:
+            root = doc_path.parent
+    os.environ["MDR_ROOT"] = str(root)
 
     if doc_path is not None:
         # The server reads this env var to auto-redirect `/` → `/?path=...` when
@@ -277,22 +288,23 @@ def cmd_add(args: argparse.Namespace) -> int:
 
 
 def cmd_highlight(args: argparse.Namespace) -> int:
-    """Add a highlight (marker or underline) to a block, with an optional note."""
+    """Mark a selected text span. Highlights are annotations carrying a selected_text."""
     import uuid
 
     doc = _resolve_doc_arg(args.path)
     note = args.text
     if note == "-":
         note = sys.stdin.read().rstrip("\n")
-    from .server.schemas import Highlight
+    from .server.schemas import Annotation
 
-    hl = Highlight(
+    hl = Annotation(
         id=str(uuid.uuid4()),
         author=args.author,
-        style=args.style,
+        type=args.type,
+        text=note,
         selected_text=args.selected_text,
         occurrence=args.occurrence,
-        text=note,
+        seen=False,
         ts=utcnow_iso(),
     )
 
@@ -302,7 +314,7 @@ def cmd_highlight(args: argparse.Namespace) -> int:
         if not _seed_paragraph_if_missing(ann, doc, args.paragraph_id):
             return
         seeded["ok"] = True
-        ann.paragraphs[args.paragraph_id].highlights.append(hl)
+        ann.paragraphs[args.paragraph_id].annotations.append(hl)
 
     mutate_annotations(doc, _do)
     if not seeded["ok"]:
@@ -427,9 +439,9 @@ def cmd_suggestions(args: argparse.Namespace) -> int:
 
 
 def cmd_delete(args: argparse.Namespace) -> int:
-    """Delete an annotation or highlight by id."""
+    """Delete an annotation by id."""
     doc = _resolve_doc_arg(args.path)
-    outcome = {"kind": None}
+    outcome: dict[str, str | None] = {"kind": None}
 
     def _do(ann):
         for para in ann.paragraphs.values():
@@ -437,11 +449,6 @@ def cmd_delete(args: argparse.Namespace) -> int:
                 if a.id == args.id:
                     para.annotations.pop(i)
                     outcome["kind"] = "annotation"
-                    return
-            for i, h in enumerate(para.highlights):
-                if h.id == args.id:
-                    para.highlights.pop(i)
-                    outcome["kind"] = "highlight"
                     return
 
     mutate_annotations(doc, _do)
@@ -490,7 +497,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_add = sub.add_parser("add", help="Add an annotation (for agent automation)")
     p_add.add_argument("--path", required=True)
     p_add.add_argument("--item-id", "--paragraph-id", dest="paragraph_id", metavar="ITEM_ID", required=True)
-    p_add.add_argument("--author", choices=["agent", "user"], default="agent")
+    p_add.add_argument("--author", default="agent", help="Reviewer name (free-form; e.g. agent, user, alice)")
     p_add.add_argument(
         "--type", choices=["info", "error", "task", "comment"], default="comment",
         help="Annotation category set by the author (agents pick info/error/task)",
@@ -499,13 +506,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_add.add_argument("--text", required=True, help="Annotation text, or '-' to read from stdin")
     p_add.set_defaults(func=cmd_add)
 
-    p_hl = sub.add_parser("highlight", help="Add a highlight (marker/underline) to a block")
+    p_hl = sub.add_parser("highlight", help="Mark a selected text span (an annotation with selected_text)")
     p_hl.add_argument("--path", required=True)
     p_hl.add_argument("--item-id", "--paragraph-id", dest="paragraph_id", metavar="ITEM_ID", required=True)
     p_hl.add_argument("--selected-text", dest="selected_text", required=True, help="Exact visible text span to mark")
-    p_hl.add_argument("--style", choices=["marker", "underline"], default="marker")
+    p_hl.add_argument(
+        "--type", choices=["info", "error", "task", "comment"], default="comment",
+        help="Annotation category for the highlight",
+    )
     p_hl.add_argument("--occurrence", type=int, default=0, help="0-based occurrence within the block")
-    p_hl.add_argument("--author", choices=["agent", "user"], default="agent")
+    p_hl.add_argument("--author", default="agent", help="Reviewer name (free-form; e.g. agent, user, alice)")
     p_hl.add_argument("--text", default="", help="Note attached to the highlight, or '-' for stdin")
     p_hl.set_defaults(func=cmd_highlight)
 
@@ -517,7 +527,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["replace", "delete", "insert-before", "insert-after", "inline-replace"],
         required=True,
     )
-    p_suggest.add_argument("--author", choices=["agent", "user"], default="agent")
+    p_suggest.add_argument("--author", default="agent", help="Reviewer name (free-form; e.g. agent, user, alice)")
     p_suggest.add_argument("--raw", default="", help="Suggested markdown source, or '-' to read from stdin")
     p_suggest.add_argument("--selected-text", default="", help="Selected source text for inline-replace")
     p_suggest.add_argument("--occurrence", type=int, default=0, help="0-based selected text occurrence")

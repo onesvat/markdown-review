@@ -2,8 +2,7 @@
 (() => {
   const state = {
     docPath: null,
-    mode: localStorage.getItem("mdr.mode") || "user",
-    highlightStyle: localStorage.getItem("mdr.highlightStyle") || "marker",
+    name: localStorage.getItem("mdr.name") || "user",
     pendingHighlight: null,
     data: null,
     bib: {},
@@ -16,20 +15,42 @@
     return u.searchParams.get(name);
   }
 
-  function setMode(mode) {
-    state.mode = mode;
-    localStorage.setItem("mdr.mode", mode);
-    document.querySelectorAll(".mode-btn").forEach((b) => {
-      b.classList.toggle("active", b.dataset.mode === mode);
-    });
+  function setName(name) {
+    state.name = (name || "").trim() || "user";
+    localStorage.setItem("mdr.name", state.name);
   }
 
-  function setHighlightStyle(style) {
-    state.highlightStyle = style;
-    localStorage.setItem("mdr.highlightStyle", style);
-    document.querySelectorAll(".highlight-mode-btn").forEach((b) => {
-      b.classList.toggle("active", b.dataset.highlightStyle === style);
-    });
+  // Distinct hues rotated across reviewer names so each name gets its own marker
+  // color. The hue is picked deterministically from the name, so the same name
+  // always keeps the same color across sessions and documents.
+  const AUTHOR_HUES = [38, 222, 162, 286, 0, 130, 196, 320, 50, 256, 100, 12];
+
+  function hashString(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i += 1) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function colorForName(name) {
+    const hue = AUTHOR_HUES[hashString(String(name || "").trim().toLowerCase()) % AUTHOR_HUES.length];
+    return {
+      marker: `hsl(${hue} 90% 55% / 0.32)`,
+      strong: `hsl(${hue} 75% 38%)`,
+      bg: `hsl(${hue} 85% 97%)`,
+      border: `hsl(${hue} 70% 60%)`,
+      fg: `hsl(${hue} 65% 28%)`,
+    };
+  }
+
+  function applyAuthorColors(el, name) {
+    const c = colorForName(name);
+    el.style.setProperty("--author-bg", c.bg);
+    el.style.setProperty("--author-border", c.border);
+    el.style.setProperty("--author-fg", c.fg);
+    el.style.setProperty("--author-strong", c.strong);
   }
 
   function escapeHtml(s) {
@@ -349,6 +370,20 @@
     return t.replace(/_/g, " ");
   }
 
+  // ISO timestamp → friendly local string, e.g. "7 Haz 2026, 09:57".
+  function formatTs(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
   function countOccurrences(haystack, needle) {
     if (!needle) return 0;
     let count = 0;
@@ -372,17 +407,20 @@
     return -1;
   }
 
-  function highlightTooltip(h) {
-    return `${h.author} · ${h.style}\n${h.text || ""}`;
+  function highlightTooltip(ann) {
+    return `${ann.author}\n${ann.text || ""}`;
   }
 
-  function makeHighlightSpan(h) {
+  function makeHighlightSpan(ann) {
     const mark = document.createElement("mark");
-    mark.className = `mdr-highlight ${h.author} ${h.style}`;
-    mark.dataset.highlightId = h.id;
-    mark.dataset.tooltip = highlightTooltip(h);
-    mark.title = h.text || "";
+    mark.className = "mdr-highlight marker";
+    mark.dataset.annId = ann.id;
+    mark.dataset.tooltip = highlightTooltip(ann);
+    mark.title = ann.text || "";
     mark.tabIndex = 0;
+    const c = colorForName(ann.author);
+    mark.style.setProperty("--highlight-color", c.marker);
+    mark.style.setProperty("--highlight-strong", c.strong);
     return mark;
   }
 
@@ -401,8 +439,8 @@
     return nodes;
   }
 
-  function applyHighlight(root, highlight) {
-    const selectedText = highlight.selected_text || "";
+  function applyHighlight(root, annotation) {
+    const selectedText = annotation.selected_text || "";
     if (!selectedText) return;
 
     const nodes = textNodesForHighlight(root);
@@ -414,7 +452,7 @@
       spans.push({ node, start, end: fullText.length });
     }
 
-    const targetStart = findOccurrenceStart(fullText, selectedText, highlight.occurrence || 0);
+    const targetStart = findOccurrenceStart(fullText, selectedText, annotation.occurrence || 0);
     if (targetStart === -1) return;
     const targetEnd = targetStart + selectedText.length;
 
@@ -429,7 +467,7 @@
     const range = document.createRange();
     range.setStart(first.node, targetStart - first.start);
     range.setEnd(last.node, targetEnd - last.start);
-    const mark = makeHighlightSpan(highlight);
+    const mark = makeHighlightSpan(annotation);
     try {
       range.surroundContents(mark);
     } catch (_e) {
@@ -440,9 +478,11 @@
     }
   }
 
-  function applyHighlights(root, highlights) {
-    for (const h of highlights || []) {
-      applyHighlight(root, h);
+  // Annotations that carry a selected_text span also render inline as a marker
+  // over that span (the former "highlight" behavior).
+  function applyHighlights(root, annotations) {
+    for (const ann of annotations || []) {
+      if (ann.selected_text) applyHighlight(root, ann);
     }
   }
 
@@ -539,14 +579,16 @@
     const annType = ANNOTATION_TYPES.includes(ann.type) ? ann.type : "comment";
     const seen = Boolean(ann.seen);
     const wrap = document.createElement("div");
-    wrap.className = `annotation ${ann.author} ${annType} ${seen ? "seen" : "unseen"}`;
+    wrap.className = `annotation ${annType} ${seen ? "seen" : "unseen"}`;
     wrap.dataset.annId = ann.id;
+    applyAuthorColors(wrap, ann.author);
 
     const meta = document.createElement("div");
     meta.className = "annotation-meta";
 
     const typeSelect = document.createElement("select");
     typeSelect.className = `annotation-type type-${annType}`;
+    typeSelect.lang = "en";
     for (const t of ANNOTATION_TYPES) {
       const opt = document.createElement("option");
       opt.value = t;
@@ -566,9 +608,16 @@
     const rest = document.createElement("span");
     rest.innerHTML =
       `<span class="annotation-author">${escapeHtml(ann.author)}</span>` +
-      `<span class="annotation-ts">${escapeHtml(ann.ts || "")}</span>`;
+      `<span class="annotation-ts">${escapeHtml(formatTs(ann.ts))}</span>`;
     meta.appendChild(rest);
     wrap.appendChild(meta);
+
+    if (ann.selected_text) {
+      const anchor = document.createElement("div");
+      anchor.className = "annotation-anchor";
+      anchor.textContent = ann.selected_text;
+      wrap.appendChild(anchor);
+    }
 
     const text = document.createElement("div");
     text.className = "annotation-text";
@@ -601,6 +650,7 @@
 
     const typeSelect = document.createElement("select");
     typeSelect.className = "annotation-type";
+    typeSelect.lang = "en";
     for (const t of ANNOTATION_TYPES) {
       const opt = document.createElement("option");
       opt.value = t;
@@ -621,7 +671,6 @@
 
     const submit = document.createElement("button");
     submit.className = "primary";
-    submit.dataset.author = "user";
     submit.textContent = "add comment";
     const submitAnnotation = async () => {
       if (submit.disabled) return;
@@ -629,7 +678,7 @@
       if (!text) return;
       submit.disabled = true;
       try {
-        const created = await createAnnotation(paragraphId, text, "user", typeSelect.value);
+        const created = await createAnnotation(paragraphId, text, state.name, typeSelect.value);
         if (!created) return;
         ta.value = "";
         wrap.classList.add("hidden");
@@ -669,7 +718,7 @@
     details.className = "edit-revision";
 
     const summary = document.createElement("summary");
-    summary.textContent = `${index + 1}. ${revision.author} · ${revision.ts || ""} · ${revision.old_id} → ${revision.new_id}`;
+    summary.textContent = `${index + 1}. ${revision.author} · ${formatTs(revision.ts)} · ${revision.old_id} → ${revision.new_id}`;
     details.appendChild(summary);
 
     const grid = document.createElement("div");
@@ -766,10 +815,10 @@
     const meta = document.createElement("div");
     meta.className = "suggestion-meta";
     meta.innerHTML =
-      `<span class="suggestion-action">${escapeHtml(suggestionActionLabel(suggestion.action))}</span>` +
-      `<span class="suggestion-status ${escapeHtml(status)}">${escapeHtml(status)}</span>` +
+      `<span class="suggestion-action" lang="en">${escapeHtml(suggestionActionLabel(suggestion.action))}</span>` +
+      `<span class="suggestion-status ${escapeHtml(status)}" lang="en">${escapeHtml(status)}</span>` +
       `<span class="annotation-author">${escapeHtml(suggestion.author)}</span>` +
-      `<span class="annotation-ts">${escapeHtml(suggestion.ts || "")}</span>`;
+      `<span class="annotation-ts">${escapeHtml(formatTs(suggestion.ts))}</span>`;
     wrap.appendChild(meta);
 
     if (suggestion.note) {
@@ -868,6 +917,7 @@
 
     const title = document.createElement("div");
     title.className = "suggestions-title";
+    title.lang = "en";
     title.textContent = `suggestions (${suggestions.length})`;
     panel.appendChild(title);
 
@@ -930,7 +980,7 @@
     cancel.textContent = "cancel";
     const save = document.createElement("button");
     save.className = "primary";
-    save.textContent = `suggest as ${state.mode}`;
+    save.textContent = `suggest as ${state.name}`;
     editActions.appendChild(cancel);
     editActions.appendChild(save);
     editor.appendChild(editActions);
@@ -957,8 +1007,8 @@
     const openEditor = (action) => {
       activeAction = action;
       editor.classList.remove("hidden");
-      editorTitle.textContent = `suggest ${suggestionActionLabel(action)} as ${state.mode}`;
-      save.textContent = `suggest as ${state.mode}`;
+      editorTitle.textContent = `suggest ${suggestionActionLabel(action)} as ${state.name}`;
+      save.textContent = `suggest as ${state.name}`;
       ta.value = action === "replace" ? block.raw : "";
       noteTa.value = "";
       ta.focus();
@@ -977,7 +1027,7 @@
           action: "delete",
           raw: "",
           note: "",
-          author: state.mode,
+          author: state.name,
         });
         if (!created) return;
         await loadDoc({ preserveScroll: true, anchorId: block.paragraph_id });
@@ -1004,7 +1054,7 @@
           action: activeAction,
           raw,
           note: noteTa.value.trim(),
-          author: state.mode,
+          author: state.name,
         });
         if (!created) return;
         await loadDoc({
@@ -1046,7 +1096,7 @@
     const header = document.createElement("div");
     header.className = "block-header";
     header.innerHTML =
-      `<span class="block-type">${escapeHtml(blockTypeLabel(block.type))}</span>` +
+      `<span class="block-type" lang="en">${escapeHtml(blockTypeLabel(block.type))}</span>` +
       (block.paragraph_id
         ? `<span class="block-id">${escapeHtml(block.paragraph_id)}</span>`
         : "");
@@ -1059,7 +1109,7 @@
     } else {
       body.innerHTML = renderMarkdown(block.raw, docPath);
     }
-    applyHighlights(body, block.highlights);
+    applyHighlights(body, block.annotations);
     applyInlineSuggestions(body, block.suggestions, block.paragraph_id);
     card.appendChild(body);
 
@@ -1144,23 +1194,52 @@
     popover = document.createElement("div");
     popover.id = "highlight-popover";
     popover.className = "highlight-popover hidden";
+    const typeOptions = ANNOTATION_TYPES.map(
+      (t) => `<option value="${t}"${t === "comment" ? " selected" : ""}>${t}</option>`,
+    ).join("");
     popover.innerHTML =
       `<div class="highlight-popover-meta">` +
       `<span class="highlight-popover-mode"></span>` +
       `<button class="highlight-popover-close" type="button" aria-label="Close">×</button>` +
       `</div>` +
       `<div class="highlight-popover-selection"></div>` +
-      `<textarea class="highlight-note" placeholder="Highlight comment or suggestion note"></textarea>` +
-      `<textarea class="inline-replacement" placeholder="Replacement text for selected text"></textarea>` +
+      `<div class="hp-tabs">` +
+      `<button class="hp-tab active" type="button" data-tab="highlight">highlight</button>` +
+      `<button class="hp-tab" type="button" data-tab="suggest">suggest change</button>` +
+      `</div>` +
+      `<div class="hp-panel" data-panel="highlight">` +
+      `<select class="highlight-type annotation-type" lang="en">${typeOptions}</select>` +
+      `<textarea class="highlight-note" placeholder="Highlight comment"></textarea>` +
       `<div class="highlight-popover-actions">` +
       `<button class="highlight-cancel" type="button">cancel</button>` +
       `<button class="highlight-save" type="button">add highlight</button>` +
+      `</div>` +
+      `</div>` +
+      `<div class="hp-panel hidden" data-panel="suggest">` +
+      `<textarea class="inline-replacement" placeholder="Replacement text for selected text"></textarea>` +
+      `<textarea class="suggest-note" placeholder="Note (optional)"></textarea>` +
+      `<div class="highlight-popover-actions">` +
+      `<button class="highlight-cancel" type="button">cancel</button>` +
       `<button class="inline-suggest-save" type="button">suggest change</button>` +
+      `</div>` +
       `</div>`;
     document.body.appendChild(popover);
 
-    popover.querySelector(".highlight-popover-close").addEventListener("click", hideHighlightPopover);
-    popover.querySelector(".highlight-cancel").addEventListener("click", hideHighlightPopover);
+    const showTab = (tab) => {
+      popover.querySelectorAll(".hp-tab").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tab === tab);
+      });
+      popover.querySelectorAll(".hp-panel").forEach((p) => {
+        p.classList.toggle("hidden", p.dataset.panel !== tab);
+      });
+    };
+    popover.querySelectorAll(".hp-tab").forEach((b) => {
+      b.addEventListener("click", () => showTab(b.dataset.tab));
+    });
+
+    popover.querySelectorAll(".highlight-popover-close, .highlight-cancel").forEach((b) => {
+      b.addEventListener("click", hideHighlightPopover);
+    });
     popover.querySelector(".highlight-save").addEventListener("click", () => submitHighlight());
     popover.querySelector(".inline-suggest-save").addEventListener("click", () => submitInlineSuggestion());
     popover.querySelector(".highlight-note").addEventListener("keydown", (e) => {
@@ -1256,12 +1335,16 @@
     state.pendingHighlight = ctx;
     const popover = highlightPopover();
     popover.classList.remove("hidden");
-    popover.dataset.author = state.mode;
-    popover.dataset.style = state.highlightStyle;
-    popover.querySelector(".highlight-popover-mode").textContent =
-      `${state.mode} · ${state.highlightStyle}`;
+    popover.dataset.author = state.name;
+    applyAuthorColors(popover, state.name);
+    popover.querySelector(".highlight-popover-mode").textContent = state.name;
     popover.querySelector(".highlight-popover-selection").textContent = ctx.selectedText;
+    // Reset to the highlight tab each time the selection popover opens.
+    popover.querySelectorAll(".hp-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === "highlight"));
+    popover.querySelectorAll(".hp-panel").forEach((p) => p.classList.toggle("hidden", p.dataset.panel !== "highlight"));
+    popover.querySelector(".highlight-type").value = "comment";
     popover.querySelector(".highlight-note").value = "";
+    popover.querySelector(".suggest-note").value = "";
     popover.querySelector(".inline-replacement").value = ctx.selectedText;
     positionHighlightPopover(popover, ctx.rect);
   }
@@ -1272,18 +1355,19 @@
     if (!pending) return;
     const text = popover.querySelector(".highlight-note").value.trim();
     if (!text) return;
+    const type = popover.querySelector(".highlight-type").value;
 
     const save = popover.querySelector(".highlight-save");
     save.disabled = true;
     try {
-      const created = await createHighlight({
-        paragraphId: pending.paragraphId,
-        selectedText: pending.selectedText,
-        occurrence: pending.occurrence,
+      const created = await createAnnotation(
+        pending.paragraphId,
         text,
-        author: state.mode,
-        style: state.highlightStyle,
-      });
+        state.name,
+        type,
+        pending.selectedText,
+        pending.occurrence,
+      );
       if (!created) return;
       window.getSelection()?.removeAllRanges();
       hideHighlightPopover();
@@ -1310,8 +1394,8 @@
         anchorId: pending.paragraphId,
         action: "inline_replace",
         raw: replacement,
-        note: popover.querySelector(".highlight-note").value.trim(),
-        author: state.mode,
+        note: popover.querySelector(".suggest-note").value.trim(),
+        author: state.name,
         selectedText: pending.selectedText,
         occurrence: pending.occurrence,
       });
@@ -1373,7 +1457,8 @@
         `Usage: open <code>/?path=/abs/path/to/doc.md</code></div>`;
       return;
     }
-    $("#doc-path").textContent = state.docPath;
+    const fileSelect = $("#file-select");
+    if (fileSelect && state.docPath) fileSelect.value = state.docPath;
 
     if (!preserveScroll) {
       content.innerHTML = `<div class="loading">loading…</div>`;
@@ -1406,7 +1491,7 @@
     restoreScroll(scrollSnapshot);
   }
 
-  async function createAnnotation(paragraphId, text, author, type) {
+  async function createAnnotation(paragraphId, text, author, type, selectedText = "", occurrence = 0) {
     const resp = await fetch("/api/annotations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1416,34 +1501,14 @@
         text,
         author,
         type: type || "comment",
+        selected_text: selectedText,
+        occurrence,
         seen: false,
       }),
     });
     if (!resp.ok) {
       const txt = await resp.text();
       alert(`Failed to create annotation: ${txt}`);
-      return false;
-    }
-    return true;
-  }
-
-  async function createHighlight({ paragraphId, selectedText, occurrence, text, author, style }) {
-    const resp = await fetch("/api/highlights", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        path: state.docPath,
-        paragraph_id: paragraphId,
-        selected_text: selectedText,
-        occurrence,
-        text,
-        author,
-        style,
-      }),
-    });
-    if (!resp.ok) {
-      const txt = await resp.text();
-      alert(`Failed to create highlight: ${txt}`);
       return false;
     }
     return true;
@@ -1547,17 +1612,69 @@
     await loadDoc({ preserveScroll: true, anchorId: _paragraphId });
   }
 
+  async function loadFiles() {
+    const select = $("#file-select");
+    if (!select) return;
+    let files = [];
+    let root = "";
+    try {
+      const resp = await fetch("/api/files");
+      if (resp.ok) {
+        const data = await resp.json();
+        files = data.files || [];
+        root = data.root || "";
+      }
+    } catch (_e) {
+      /* leave the dropdown empty on failure */
+    }
+    select.innerHTML = "";
+    // Ensure the current doc is always selectable even if it lives outside root.
+    if (state.docPath && !files.some((f) => f.path === state.docPath)) {
+      files = [{ path: state.docPath, name: state.docPath }, ...files];
+    }
+    if (!files.length) {
+      const opt = document.createElement("option");
+      opt.textContent = "no markdown files";
+      opt.disabled = true;
+      select.appendChild(opt);
+      return;
+    }
+    for (const f of files) {
+      const opt = document.createElement("option");
+      opt.value = f.path;
+      opt.textContent = f.name;
+      select.appendChild(opt);
+    }
+    if (state.docPath) select.value = state.docPath;
+    select.title = root ? `Documents under ${root}` : "Pick a document";
+  }
+
+  function setNameInput(name) {
+    setName(name);
+    const input = $("#name-input");
+    if (input && input.value !== state.name) input.value = state.name;
+  }
+
   function init() {
     state.docPath = getQueryParam("path");
-    setMode(state.mode);
-    setHighlightStyle(state.highlightStyle);
+    setName(state.name);
 
-    document.querySelectorAll(".mode-btn").forEach((b) => {
-      b.addEventListener("click", () => setMode(b.dataset.mode));
-    });
-    document.querySelectorAll(".highlight-mode-btn").forEach((b) => {
-      b.addEventListener("click", () => setHighlightStyle(b.dataset.highlightStyle));
-    });
+    const nameInput = $("#name-input");
+    if (nameInput) {
+      nameInput.value = state.name;
+      nameInput.addEventListener("input", () => setName(nameInput.value));
+      nameInput.addEventListener("blur", () => setNameInput(nameInput.value));
+    }
+
+    const fileSelect = $("#file-select");
+    if (fileSelect) {
+      fileSelect.addEventListener("change", () => {
+        if (!fileSelect.value || fileSelect.value === state.docPath) return;
+        window.location.href = `/?path=${encodeURIComponent(fileSelect.value)}`;
+      });
+    }
+    loadFiles();
+
     document.addEventListener("mouseup", (e) => {
       if (e.target.closest?.("#highlight-popover")) return;
       if (e.target.closest?.("#inline-suggestion-popover")) return;
