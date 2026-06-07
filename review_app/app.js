@@ -10,6 +10,33 @@
 
   const $ = (sel) => document.querySelector(sel);
 
+  // --- dark mode -----------------------------------------------------------
+  function getTheme() {
+    const saved = localStorage.getItem("mdr.theme");
+    if (saved === "dark" || saved === "light") return saved;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    const btn = $("#theme-toggle");
+    if (btn) btn.textContent = theme === "dark" ? "☀" : "☾";
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem("mdr.theme", next);
+    applyTheme(next);
+  }
+
+  applyTheme(getTheme());
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = $("#theme-toggle");
+    if (btn) btn.addEventListener("click", toggleTheme);
+  });
+
   function getQueryParam(name) {
     const u = new URL(window.location.href);
     return u.searchParams.get(name);

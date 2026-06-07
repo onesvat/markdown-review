@@ -18,6 +18,26 @@
   --new-fg: #78350f;
 }
 
+[data-theme="dark"] {
+  --bg: #111110;
+  --bg-card: #1c1c1a;
+  --fg: #e7e5e4;
+  --fg-muted: #a8a29e;
+  --border: #292524;
+  --border-strong: #44403c;
+
+  --user-border: #fbbf24;
+  --user-bg: #292011;
+  --user-fg: #fde68a;
+
+  --agent-border: #818cf8;
+  --agent-bg: #1a1a2e;
+  --agent-fg: #c7d2fe;
+
+  --new-bg: #713f12;
+  --new-fg: #fde68a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -141,6 +161,17 @@ main {
 
 .block.paragraph {
   border-left: 3px solid var(--border-strong);
+}
+
+.block.figure,
+.block.image {
+  border-left: 3px solid #8b5cf6;
+  background: #faf5ff;
+}
+
+[data-theme="dark"] .block.figure,
+[data-theme="dark"] .block.image {
+  background: #1f1a2e;
 }
 
 .block-header {
@@ -1138,6 +1169,91 @@ main {
   background: var(--bg);
   color: var(--fg-muted);
   border: 1px dashed var(--border-strong);
+}
+
+/* Dark mode overrides for hardcoded light elements */
+[data-theme="dark"] .source-editor textarea {
+  background: #292524;
+  color: var(--fg);
+}
+
+[data-theme="dark"] .suggestion {
+  background: #1c1c1a;
+}
+
+[data-theme="dark"] .suggestion.accepted {
+  background: #0f2b1a;
+  border-color: #1f5c31;
+}
+
+[data-theme="dark"] .suggestion.rejected {
+  background: #1c1c1a;
+}
+
+[data-theme="dark"] .annotation.seen {
+  background: #1c1c1a;
+}
+
+[data-theme="dark"] .suggestion-diff-source {
+  color: var(--fg);
+}
+
+[data-theme="dark"] .suggestion-diff-source .diff-insert {
+  background: #14532d;
+}
+
+[data-theme="dark"] .suggestion-diff-source .diff-delete {
+  background: #531414;
+}
+
+[data-theme="dark"] .inline-suggestion-popover {
+  border-color: #1f5c31;
+  border-top-color: #22c55e;
+}
+
+[data-theme="dark"] .suggestion-raw {
+  background: #292524;
+  border-color: var(--border-strong);
+}
+
+[data-theme="dark"] .source-versions {
+  background: #1c1c1a;
+}
+
+[data-theme="dark"] .highlight-popover {
+  background: #1c1c1a;
+}
+
+[data-theme="dark"] .hp-tab {
+  background: #292524;
+}
+
+[data-theme="dark"] .hp-tab.active {
+  background: #1c1c1a;
+}
+
+[data-theme="dark"] .highlight-popover textarea {
+  background: #292524;
+  color: var(--fg);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--fg-muted);
+  cursor: pointer;
+  line-height: 1;
+  transition: background 120ms ease;
+}
+
+.theme-toggle:hover {
+  background: var(--border);
+  color: var(--fg);
 }
 
 @media (max-width: 720px) {

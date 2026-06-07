@@ -155,9 +155,13 @@ def parse_blocks_from_text(src: str) -> list[Block]:
 
         if tok.type in _ATOMIC_TYPES:
             block_type = _ATOMIC_TYPES[tok.type]
-            # MyST directive in a backtick fence (```{figure} ...) → treat as colon_fence
+            # MyST directives in a backtick fence (```{figure} ..., ```{list-table} ...)
             if tok.type == "fence" and (tok.info or "").lstrip().startswith("{"):
-                block_type = "colon_fence"
+                info = (tok.info or "").lstrip()
+                if info.startswith("{figure}"):
+                    block_type = "figure"
+                else:
+                    block_type = "colon_fence"
             if tok.map:
                 start_line, end_line = tok.map
                 raw = _slice_lines(src_lines, start_line, end_line)
@@ -171,5 +175,11 @@ def parse_blocks_from_text(src: str) -> list[Block]:
 
         # Unknown top-level token: skip but advance.
         i += 1
+
+    # Post-process: detect standalone image paragraphs (![alt](src) on its own line).
+    _IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$")
+    for block in blocks:
+        if block.type == "paragraph" and _IMAGE_RE.match(block.raw):
+            block.type = "image"
 
     return blocks
