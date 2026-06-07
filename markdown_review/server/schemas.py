@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import uuid
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 # Author is a free-form reviewer name. Each distinct name is assigned a rotating
@@ -11,7 +12,9 @@ from pydantic import BaseModel, Field, model_validator
 Author = str
 AnnotationType = Literal["info", "error", "task", "comment"]
 SuggestionAction = Literal["replace", "delete", "insert_before", "insert_after", "inline_replace"]
-SuggestionStatus = Literal["open", "accepted", "rejected"]
+SuggestionStatus = Literal["open", "accepted", "rejected", "needs_resolution"]
+SuggestionHunkKind = Literal["replace", "delete", "insert"]
+SuggestionHunkPlacement = Literal["inside", "before", "after"]
 
 
 def utcnow_iso() -> str:
@@ -30,47 +33,6 @@ class Annotation(BaseModel):
     seen: bool = False
     ts: str = Field(default_factory=utcnow_iso)
 
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_status_to_seen(cls, data):
-        if isinstance(data, dict) and "seen" not in data and "status" in data:
-            data = dict(data)
-            data["seen"] = data.get("status") in {"reviewed", "completed"}
-        return data
-
-
-def _migrate_highlights_to_annotations(data):
-    """Fold legacy `highlights` records into `annotations` with selected_text.
-
-    Highlights used to be a separate entity with a marker/underline `style`.
-    They are now ordinary annotations that carry a `selected_text` span, so old
-    sidecar files are upgraded transparently on load.
-    """
-    if not isinstance(data, dict) or "highlights" not in data:
-        return data
-    data = dict(data)
-    legacy = data.pop("highlights") or []
-    annotations = list(data.get("annotations") or [])
-    for h in legacy:
-        if not isinstance(h, dict):
-            continue
-        migrated = {
-            "id": h.get("id"),
-            "author": h.get("author", "user"),
-            "type": "comment",
-            "text": h.get("text", ""),
-            "selected_text": h.get("selected_text", ""),
-            "occurrence": h.get("occurrence", 0),
-            "seen": False,
-        }
-        # Only carry ts when present; otherwise let the default factory stamp it
-        # (passing ts=None would fail validation).
-        if h.get("ts"):
-            migrated["ts"] = h["ts"]
-        annotations.append(migrated)
-    data["annotations"] = annotations
-    return data
-
 
 class EditRevision(BaseModel):
     id: str
@@ -79,7 +41,28 @@ class EditRevision(BaseModel):
     new_id: str
     before: str
     after: str
+    item_id: str = ""
+    before_revision_id: str = ""
+    after_revision_id: str = ""
+    start: int = 0
+    end: int = 0
     ts: str = Field(default_factory=utcnow_iso)
+
+
+class SuggestionHunk(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    item_id: str = ""
+    base_revision_id: str = ""
+    base_item_hash: str = ""
+    base_item_text: str = ""
+    start: int = 0
+    end: int = 0
+    old_text: str = ""
+    new_text: str = ""
+    prefix_context: str = ""
+    suffix_context: str = ""
+    kind: SuggestionHunkKind = "replace"
+    placement: SuggestionHunkPlacement = "inside"
 
 
 class Suggestion(BaseModel):
@@ -92,6 +75,8 @@ class Suggestion(BaseModel):
     occurrence: int = 0
     note: str = ""
     status: SuggestionStatus = "open"
+    hunks: list[SuggestionHunk] = Field(default_factory=list)
+    conflict: str = ""
     ts: str = Field(default_factory=utcnow_iso)
     applied_ts: Optional[str] = None
 
@@ -99,14 +84,17 @@ class Suggestion(BaseModel):
 class ParagraphRecord(BaseModel):
     id: str
     preview: str
+    legacy_id: str = ""
+    block_type: str = ""
+    content_hash: str = ""
+    source_start_line: Optional[int] = None
+    source_end_line: Optional[int] = None
+    source_start: Optional[int] = None
+    source_end: Optional[int] = None
+    active: bool = True
     annotations: list[Annotation] = Field(default_factory=list)
     edits: list[EditRevision] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_highlights(cls, data):
-        return _migrate_highlights_to_annotations(data)
 
 
 class OrphanRecord(BaseModel):
@@ -117,16 +105,12 @@ class OrphanRecord(BaseModel):
     suggestions: list[Suggestion] = Field(default_factory=list)
     removed_at: str = Field(default_factory=utcnow_iso)
 
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_highlights(cls, data):
-        return _migrate_highlights_to_annotations(data)
-
 
 class AnnotationsFile(BaseModel):
-    schema_version: int = 1
+    schema_version: int = 2
     doc_path: str
     updated_at: str = Field(default_factory=utcnow_iso)
+    doc_revision_id: str = ""
     paragraphs: dict[str, ParagraphRecord] = Field(default_factory=dict)
     orphans: list[OrphanRecord] = Field(default_factory=list)
 
@@ -135,9 +119,12 @@ class Block(BaseModel):
     type: str
     raw: str
     paragraph_id: Optional[str] = None
+    legacy_id: Optional[str] = None
     preview: Optional[str] = None
     source_start_line: Optional[int] = None
     source_end_line: Optional[int] = None
+    source_start: Optional[int] = None
+    source_end: Optional[int] = None
     annotations: list[Annotation] = Field(default_factory=list)
     edits: list[EditRevision] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)

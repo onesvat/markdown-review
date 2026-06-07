@@ -172,13 +172,20 @@ All review data lives in `<doc>.annotations.json` alongside your document:
 
 ```jsonc
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "doc_path": "/abs/path/to/doc.md",
   "updated_at": "2026-06-04T12:00:00Z",
+  "doc_revision_id": "<sha1-of-current-markdown>",
   "paragraphs": {
     "<item_id>": {
-      "id": "<item_id>",
+      "id": "<stable-uuid>",
       "preview": "first ~120 chars",
+      "block_type": "paragraph|heading|code|...",
+      "content_hash": "<sha1-prefix-of-current-item-source>",
+      "source_start_line": 12,
+      "source_end_line": 13,
+      "source_start": 240,
+      "source_end": 315,
       "annotations": [
         {
           "id": "<uuid>",
@@ -186,17 +193,6 @@ All review data lives in `<doc>.annotations.json` alongside your document:
           "type": "info|error|task|comment",
           "text": "...",
           "seen": false,
-          "ts": "..."
-        }
-      ],
-      "highlights": [
-        {
-          "id": "<uuid>",
-          "author": "user|agent",
-          "style": "marker|underline",
-          "selected_text": "...",
-          "occurrence": 0,
-          "text": "hover comment",
           "ts": "..."
         }
       ],
@@ -208,7 +204,23 @@ All review data lives in `<doc>.annotations.json` alongside your document:
           "anchor_id": "<item_id>",
           "raw": "suggested markdown",
           "note": "...",
-          "status": "open|accepted|rejected",
+          "status": "open|accepted|rejected|needs_resolution",
+          "hunks": [
+            {
+              "item_id": "<item_id>",
+              "base_revision_id": "<doc_revision_id-at-creation>",
+              "base_item_hash": "<item-source-hash-at-creation>",
+              "base_item_text": "original item source",
+              "start": 10,
+              "end": 20,
+              "old_text": "old phrase",
+              "new_text": "new phrase",
+              "prefix_context": "...",
+              "suffix_context": "...",
+              "kind": "replace|delete|insert",
+              "placement": "inside|before|after"
+            }
+          ],
           "ts": "..."
         }
       ],
@@ -229,9 +241,10 @@ All review data lives in `<doc>.annotations.json` alongside your document:
 }
 ```
 
-- **Item IDs** are content-derived (`sha1(normalize(content))[:12]`). When source changes, IDs change and review data migrates.
+- **Item IDs** are stable UUIDs. Content hashes are metadata used for reconciliation, not public anchors.
 - **Orphans** hold review data for items that disappeared from the document.
-- **Edits** record `before → after` history per item when source changes are tracked through the tool.
+- **Suggestions** store patch hunks with source ranges, old text, new text, context, and base revision metadata.
+- **Edits** record `before → after` history per item when source changes are accepted through the tool.
 
 ---
 
@@ -247,9 +260,9 @@ Suggestions are proposed source changes that don't touch the file until explicit
 | `insert_after` | Insert Markdown after the item |
 | `inline_replace` | Replace selected text within the item |
 
-Accepting applies the change and marks it `accepted`. Rejecting marks it `rejected`. If the anchor item no longer exists, apply fails and the file is left unchanged.
+Accepting applies the stored patch hunk and marks it `accepted`. Rejecting marks it `rejected`. If the item changed, the server first rebases the hunk through the item diff, then falls back to unique context matching. If the hunk is ambiguous or the old text changed, the suggestion becomes `needs_resolution` and the file is left unchanged.
 
-Inline suggestions render directly on the text — click the old/new marker to accept or reject. The selected text must still be present in the source at apply time; if it changed externally, you'll get a stale suggestion error.
+Inline suggestions can render directly on the text, but the suggestions panel is the reliable accept/reject surface. Acceptance uses source hunks, not DOM occurrence matching.
 
 ---
 
@@ -262,9 +275,7 @@ Inline suggestions render directly on the text — click the old/new marker to a
 | `POST` | `/api/annotations` | Add annotation `{path, paragraph_id, text, author, type?, seen?}` |
 | `PATCH` | `/api/annotations/{id}` | Update annotation `{path, seen?, text?, type?}` |
 | `DELETE` | `/api/annotations/{id}?path=<abs>` | Remove annotation |
-| `POST` | `/api/highlights` | Create highlight `{path, paragraph_id, selected_text, occurrence, text, author, style}` |
-| `DELETE` | `/api/highlights/{id}?path=<abs>` | Remove highlight |
-| `POST` | `/api/suggestions` | Propose change `{path, anchor_id, action, author, raw?, note?}` |
+| `POST` | `/api/suggestions` | Propose change `{path, anchor_id, action, author, raw?, selected_text?, occurrence?, note?}` |
 | `PATCH` | `/api/suggestions/{id}` | Update status/note `{path, status?, note?}` |
 | `POST` | `/api/suggestions/{id}/apply` | Apply suggestion `{path}` |
 | `PATCH` | `/api/items/source` | Legacy direct source edit |
@@ -274,8 +285,9 @@ Inline suggestions render directly on the text — click the old/new marker to a
 
 ## Design Notes
 
-- **Item IDs** are content-derived. Replacing source creates a new ID; review data migrates automatically.
-- **Annotations** track `seen: true|false`. Legacy `status` values are migrated on save.
+- **Item IDs** are stable UUIDs. Replacing source preserves the item ID.
+- **Annotations** track `seen: true|false`.
+- **Schema v2 only** — old sidecars must be migrated with `scripts/migrate_v1_sidecar.py <doc.md>`.
 - **Orphans** — if you edit the Markdown outside the tool and an item disappears, its data moves to `orphans` rather than being lost.
 - **Authorship** — the UI comment form always creates `author=user`. CLI/API can set `author=agent` for AI-authored remarks.
 - **No database** — everything is in the sidecar JSON. Commit it alongside your docs.

@@ -12,13 +12,17 @@ from pathlib import Path
 
 import uvicorn
 
+from .server.patching import build_suggestion_hunk
 from .server.parser import parse_blocks
-from .server.schemas import ParagraphRecord, Suggestion, utcnow_iso
+from .server.schemas import Suggestion, utcnow_iso
 from .server.storage import (
     annotations_path_for,
+    doc_file_lock,
     find_annotation,
     load_annotations,
     mutate_annotations,
+    reconcile_with_blocks,
+    save_annotations,
 )
 
 
@@ -64,21 +68,15 @@ def _select_blocks(blocks, section=None, from_line=None, to_line=None):
     return selected
 
 
-def _seed_paragraph_if_missing(ann, doc: Path, paragraph_id: str) -> bool:
-    """Ensure a record exists for paragraph_id, seeding it from the live doc.
+def _reconcile_blocks(ann, doc: Path):
+    src = doc.read_text(encoding="utf-8")
+    blocks = parse_blocks(doc)
+    reconcile_with_blocks(ann, blocks, src)
+    return blocks
 
-    Returns True if the id corresponds to a live block (record now present),
-    False if the id does not exist in the document at all.
-    """
-    if paragraph_id in ann.paragraphs:
-        return True
-    for b in parse_blocks(doc):
-        if b.paragraph_id == paragraph_id:
-            ann.paragraphs[paragraph_id] = ParagraphRecord(
-                id=paragraph_id, preview=b.preview or ""
-            )
-            return True
-    return False
+
+def _find_block(blocks, item_id: str):
+    return next((b for b in blocks if b.paragraph_id == item_id or b.legacy_id == item_id), None)
 
 
 def _open_browser_when_ready(url: str, delay: float = 0.6) -> None:
@@ -231,12 +229,15 @@ def cmd_mark_unseen(args: argparse.Namespace) -> int:
 def cmd_items(args: argparse.Namespace) -> int:
     """List reviewable blocks with their item-ids, types, line ranges, and previews."""
     doc = _resolve_doc_arg(args.path)
-    blocks = _select_blocks(
-        parse_blocks(doc),
-        section=args.section,
-        from_line=args.from_line,
-        to_line=args.to_line,
-    )
+    with doc_file_lock(doc):
+        ann = load_annotations(doc)
+        blocks = _select_blocks(
+            _reconcile_blocks(ann, doc),
+            section=args.section,
+            from_line=args.from_line,
+            to_line=args.to_line,
+        )
+        save_annotations(doc, ann)
 
     if args.json:
         out = [
@@ -284,10 +285,12 @@ def cmd_add(args: argparse.Namespace) -> int:
     seeded = {"ok": False}
 
     def _do(ann):
-        if not _seed_paragraph_if_missing(ann, doc, args.paragraph_id):
+        blocks = _reconcile_blocks(ann, doc)
+        block = _find_block(blocks, args.paragraph_id)
+        if not block:
             return
         seeded["ok"] = True
-        ann.paragraphs[args.paragraph_id].annotations.append(new_ann)
+        ann.paragraphs[block.paragraph_id].annotations.append(new_ann)
 
     mutate_annotations(doc, _do)
     if not seeded["ok"]:
@@ -324,10 +327,12 @@ def cmd_highlight(args: argparse.Namespace) -> int:
     seeded = {"ok": False}
 
     def _do(ann):
-        if not _seed_paragraph_if_missing(ann, doc, args.paragraph_id):
+        blocks = _reconcile_blocks(ann, doc)
+        block = _find_block(blocks, args.paragraph_id)
+        if not block:
             return
         seeded["ok"] = True
-        ann.paragraphs[args.paragraph_id].annotations.append(hl)
+        ann.paragraphs[block.paragraph_id].annotations.append(hl)
 
     mutate_annotations(doc, _do)
     if not seeded["ok"]:
@@ -367,35 +372,48 @@ def cmd_suggest(args: argparse.Namespace) -> int:
             print("error: --occurrence must be >= 0", file=sys.stderr)
             return 2
 
-    suggestion = Suggestion(
-        id=str(uuid.uuid4()),
-        author=args.author,
-        action=action,
-        anchor_id=args.paragraph_id,
-        raw=raw,
-        selected_text=args.selected_text,
-        occurrence=args.occurrence,
-        note=args.note,
-        status="open",
-        ts=utcnow_iso(),
-    )
-
     seeded = {"ok": False}
+    created: dict[str, Suggestion | None] = {"suggestion": None}
+    hunk_missing = {"bad": False}
 
     def _do(ann):
-        if not _seed_paragraph_if_missing(ann, doc, args.paragraph_id):
+        blocks = _reconcile_blocks(ann, doc)
+        block = _find_block(blocks, args.paragraph_id)
+        if not block:
             return
+        try:
+            hunk = build_suggestion_hunk(ann, block, action, raw, args.selected_text, args.occurrence)
+        except ValueError:
+            hunk_missing["bad"] = True
+            return
+        suggestion = Suggestion(
+            id=str(uuid.uuid4()),
+            author=args.author,
+            action=action,
+            anchor_id=block.paragraph_id,
+            raw=raw,
+            selected_text=args.selected_text,
+            occurrence=args.occurrence,
+            note=args.note,
+            status="open",
+            hunks=[hunk],
+            ts=utcnow_iso(),
+        )
         seeded["ok"] = True
-        ann.paragraphs[args.paragraph_id].suggestions.append(suggestion)
+        created["suggestion"] = suggestion
+        ann.paragraphs[block.paragraph_id].suggestions.append(suggestion)
 
     mutate_annotations(doc, _do)
+    if hunk_missing["bad"]:
+        print("error: selected text not found in item source", file=sys.stderr)
+        return 1
     if not seeded["ok"]:
         print(
             f"error: item id {args.paragraph_id} not found in {doc}; run `items` to list valid ids",
             file=sys.stderr,
         )
         return 1
-    print(suggestion.id)
+    print(created["suggestion"].id)
     return 0
 
 
@@ -421,6 +439,8 @@ def cmd_suggestions(args: argparse.Namespace) -> int:
                 "raw": suggestion.raw,
                 "selected_text": suggestion.selected_text,
                 "occurrence": suggestion.occurrence,
+                "hunks": [h.model_dump(mode="json") for h in suggestion.hunks],
+                "conflict": suggestion.conflict,
                 "preview": preview,
             }
             for (pid, preview, suggestion) in rows
@@ -442,6 +462,8 @@ def cmd_suggestions(args: argparse.Namespace) -> int:
             print(f"  item: {preview}")
         if suggestion.note:
             print(f"  note: {suggestion.note}")
+        if suggestion.conflict:
+            print(f"  conflict: {suggestion.conflict}")
         if suggestion.selected_text:
             print(f"  selected: {suggestion.selected_text}  occurrence: {suggestion.occurrence}")
         if suggestion.raw:

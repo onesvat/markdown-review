@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import difflib
 import urllib.parse
 import uuid
 from pathlib import Path
@@ -10,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 
 from .bib import load_citations
+from .patching import build_suggestion_hunk
 from .parser import parse_blocks, preview_of
 from .schemas import (
     Annotation,
@@ -23,19 +25,18 @@ from .schemas import (
     EditRevision,
     ParagraphRecord,
     Suggestion,
+    SuggestionHunk,
     UpdateAnnotationBody,
     UpdateSuggestionBody,
     utcnow_iso,
 )
 from .storage import (
     PathLocks,
-    annotations_path_for,
     doc_file_lock,
     find_annotation,
     find_suggestion,
-    has_review_data,
     load_annotations,
-    reconcile_with_live,
+    reconcile_with_blocks,
     save_annotations,
 )
 
@@ -77,9 +78,23 @@ def _normalize_source(raw: str, *, allow_empty: bool = False) -> str:
     return normalized
 
 
-def _find_live_block(doc: Path, paragraph_id: str, *, missing_status: int = 404):
+def _load_reconciled_blocks(doc: Path, ann) -> tuple[str, list]:
+    src = doc.read_text(encoding="utf-8")
     blocks = parse_blocks(doc)
-    target = next((b for b in blocks if b.paragraph_id == paragraph_id), None)
+    reconcile_with_blocks(ann, blocks, src)
+    return src, blocks
+
+
+def _find_block(blocks: list, item_id: str):
+    return next((b for b in blocks if b.paragraph_id == item_id or b.legacy_id == item_id), None)
+
+
+def _find_live_block(doc: Path, paragraph_id: str, ann=None, *, missing_status: int = 404):
+    if ann is None:
+        blocks = parse_blocks(doc)
+    else:
+        _src, blocks = _load_reconciled_blocks(doc, ann)
+    target = _find_block(blocks, paragraph_id)
     if not target:
         raise HTTPException(status_code=missing_status, detail="item id not found in doc")
     if target.source_start_line is None or target.source_end_line is None:
@@ -88,13 +103,11 @@ def _find_live_block(doc: Path, paragraph_id: str, *, missing_status: int = 404)
 
 
 def _ensure_record_from_live(ann, doc: Path, paragraph_id: str) -> ParagraphRecord:
-    if paragraph_id in ann.paragraphs:
-        return ann.paragraphs[paragraph_id]
-
-    target = _find_live_block(doc, paragraph_id)
-    rec = ParagraphRecord(id=paragraph_id, preview=target.preview or preview_of(target.raw))
-    ann.paragraphs[paragraph_id] = rec
-    return rec
+    _src, blocks = _load_reconciled_blocks(doc, ann)
+    target = _find_block(blocks, paragraph_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="item id not found in doc")
+    return ann.paragraphs[target.paragraph_id]
 
 
 def _write_source_lines(doc: Path, src_lines: list[str], src_had_trailing_newline: bool) -> None:
@@ -114,27 +127,26 @@ def _replace_item_source(
     missing_status: int = 404,
 ) -> EditItemResponse:
     new_raw = _normalize_source(raw)
-    target = _find_live_block(doc, paragraph_id, missing_status=missing_status)
+    src, _blocks = _load_reconciled_blocks(doc, ann)
+    target = _find_live_block(doc, paragraph_id, ann, missing_status=missing_status)
+    item_id = target.paragraph_id
+    before_revision_id = ann.doc_revision_id
 
-    src = doc.read_text(encoding="utf-8")
     src_had_trailing_newline = src.endswith("\n")
     src_lines = src.splitlines()
     src_lines[target.source_start_line : target.source_end_line] = new_raw.split("\n")
     _write_source_lines(doc, src_lines, src_had_trailing_newline)
 
-    new_blocks = parse_blocks(doc)
-    new_target = next(
-        (b for b in new_blocks if b.source_start_line == target.source_start_line),
-        None,
-    )
+    _new_src, new_blocks = _load_reconciled_blocks(doc, ann)
+    new_target = _find_block(new_blocks, item_id)
     if not new_target or not new_target.paragraph_id:
         raise HTTPException(status_code=500, detail="edited item could not be re-parsed")
 
-    old_id = paragraph_id
-    new_id = new_target.paragraph_id
-    rec = ann.paragraphs.pop(
-        old_id,
-        ParagraphRecord(id=old_id, preview=target.preview or preview_of(target.raw)),
+    old_id = item_id
+    new_id = item_id
+    rec = ann.paragraphs.get(
+        item_id,
+        ParagraphRecord(id=item_id, preview=target.preview or preview_of(target.raw)),
     )
     revision = EditRevision(
         id=str(uuid.uuid4()),
@@ -143,75 +155,160 @@ def _replace_item_source(
         new_id=new_id,
         before=target.raw,
         after=new_target.raw,
+        item_id=item_id,
+        before_revision_id=before_revision_id,
+        after_revision_id=ann.doc_revision_id,
+        start=target.source_start or 0,
+        end=target.source_end or 0,
         ts=utcnow_iso(),
     )
-    rec.id = new_id
     rec.preview = new_target.preview or preview_of(new_target.raw)
     rec.edits.append(revision)
-
-    existing = ann.paragraphs.get(new_id)
-    if existing and existing is not rec:
-        existing.annotations.extend(rec.annotations)
-        existing.edits.extend(rec.edits)
-        existing.suggestions.extend(rec.suggestions)
-        existing.preview = rec.preview
-    else:
-        ann.paragraphs[new_id] = rec
+    ann.paragraphs[item_id] = rec
 
     return EditItemResponse(old_id=old_id, new_id=new_id, revision=revision)
 
 
-def _occurrence_start(haystack: str, needle: str, occurrence: int) -> int:
-    if not needle or occurrence < 0:
-        return -1
+def _map_base_point(base: str, current: str, point: int) -> int | None:
+    matcher = difflib.SequenceMatcher(a=base, b=current, autojunk=False)
+    for tag, a0, a1, b0, b1 in matcher.get_opcodes():
+        if point < a0:
+            return b0
+        if point <= a1:
+            if tag == "equal":
+                return b0 + (point - a0)
+            if point == a0:
+                return b0
+            if point == a1:
+                return b1
+            return None
+    return len(current)
+
+
+def _resolve_by_diff(current: str, hunk: SuggestionHunk) -> tuple[int, int] | None:
+    if not hunk.base_item_text:
+        return None
+    start = _map_base_point(hunk.base_item_text, current, hunk.start)
+    end = _map_base_point(hunk.base_item_text, current, hunk.end)
+    if start is None or end is None or start > end:
+        return None
+    if current[start:end] == hunk.old_text:
+        return start, end
+    return None
+
+
+def _context_matches(current: str, start: int, end: int, hunk: SuggestionHunk) -> bool:
+    if hunk.prefix_context and not current[:start].endswith(hunk.prefix_context):
+        return False
+    if hunk.suffix_context and not current[end:].startswith(hunk.suffix_context):
+        return False
+    return True
+
+
+def _resolve_by_context(current: str, hunk: SuggestionHunk) -> tuple[int, int] | None:
+    if not hunk.old_text:
+        return None
+    matches: list[tuple[int, int]] = []
     pos = 0
-    for idx in range(occurrence + 1):
-        found = haystack.find(needle, pos)
-        if found == -1:
-            return -1
-        if idx == occurrence:
-            return found
-        pos = found + len(needle)
-    return -1
+    while True:
+        start = current.find(hunk.old_text, pos)
+        if start == -1:
+            break
+        end = start + len(hunk.old_text)
+        if _context_matches(current, start, end, hunk):
+            matches.append((start, end))
+        pos = end
+    if len(matches) == 1:
+        return matches[0]
+    return None
 
 
-def _inline_replace_item_source(doc: Path, ann, suggestion: Suggestion) -> EditItemResponse:
-    if not suggestion.selected_text:
-        raise HTTPException(status_code=400, detail="selected_text is required for inline suggestions")
-    if suggestion.occurrence < 0:
-        raise HTTPException(status_code=400, detail="occurrence must be >= 0")
+def _resolve_hunk_in_block(current: str, hunk: SuggestionHunk) -> tuple[int, int]:
+    if hunk.kind == "insert":
+        if hunk.placement == "before":
+            return 0, 0
+        if hunk.placement == "after":
+            return len(current), len(current)
 
-    target = _find_live_block(doc, suggestion.anchor_id, missing_status=409)
-    start = _occurrence_start(target.raw, suggestion.selected_text, suggestion.occurrence)
-    if start == -1:
-        raise HTTPException(status_code=409, detail="selected text no longer matches item source")
+    if current[hunk.start : hunk.end] == hunk.old_text:
+        return hunk.start, hunk.end
 
-    end = start + len(suggestion.selected_text)
-    new_raw = target.raw[:start] + suggestion.raw + target.raw[end:]
-    if not new_raw.strip():
-        raise HTTPException(status_code=400, detail="inline suggestion would make item source empty")
-    return _replace_item_source(
-        doc,
-        ann,
-        suggestion.anchor_id,
-        new_raw,
-        suggestion.author,
-        missing_status=409,
-    )
+    resolved = _resolve_by_diff(current, hunk)
+    if resolved is not None:
+        return resolved
+
+    resolved = _resolve_by_context(current, hunk)
+    if resolved is not None:
+        return resolved
+
+    raise HTTPException(status_code=409, detail="suggestion hunk no longer matches item source")
 
 
-def _spaced_insert(src_lines: list[str], index: int, raw: str) -> None:
-    new_lines = _normalize_source(raw).split("\n")
-    chunk: list[str] = []
-    if index > 0 and src_lines[index - 1].strip():
-        chunk.append("")
-    chunk.extend(new_lines)
-    if index < len(src_lines) and src_lines[index].strip():
-        chunk.append("")
-    src_lines[index:index] = chunk
+def _spaced_insert_text(src: str, index: int, raw: str) -> str:
+    chunk = _normalize_source(raw)
+    prefix = ""
+    suffix = ""
+    if index > 0 and not src[:index].endswith("\n\n"):
+        prefix = "\n\n"
+    if index < len(src) and not src[index:].startswith("\n\n"):
+        suffix = "\n\n"
+    return prefix + chunk + suffix
+
+
+def _conflict(suggestion: Suggestion, detail: str) -> None:
+    suggestion.status = "needs_resolution"
+    suggestion.conflict = detail
+    raise HTTPException(status_code=409, detail=detail)
+
+
+def _replacement_ops_for_suggestion(src: str, blocks: list, suggestion: Suggestion):
+    ops = []
+    for hunk in suggestion.hunks:
+        target = _find_block(blocks, hunk.item_id)
+        if not target or target.source_start is None or target.source_end is None:
+            _conflict(suggestion, "suggestion anchor item is no longer present")
+
+        if hunk.kind == "insert":
+            if hunk.placement == "before":
+                global_start = target.source_start
+            elif hunk.placement == "after":
+                global_start = target.source_end
+            else:
+                item_start, _item_end = _resolve_hunk_in_block(target.raw, hunk)
+                global_start = target.source_start + item_start
+            replacement = _spaced_insert_text(src, global_start, hunk.new_text)
+            ops.append((global_start, global_start, replacement, target, hunk))
+            continue
+
+        try:
+            item_start, item_end = _resolve_hunk_in_block(target.raw, hunk)
+        except HTTPException as err:
+            _conflict(suggestion, str(err.detail))
+        global_start = target.source_start + item_start
+        global_end = target.source_start + item_end
+        ops.append((global_start, global_end, hunk.new_text, target, hunk))
+
+    sorted_ops = sorted(ops, key=lambda op: (op[0], op[1]))
+    previous_end = -1
+    for start, end, _replacement, _target, _hunk in sorted_ops:
+        if start < previous_end:
+            _conflict(suggestion, "suggestion hunks overlap")
+        previous_end = max(previous_end, end)
+    return sorted(ops, key=lambda op: op[0], reverse=True)
+
+
+def _append_revision(ann, item_id: str, revision: EditRevision) -> None:
+    if item_id in ann.paragraphs:
+        ann.paragraphs[item_id].edits.append(revision)
+        return
+    for orphan in reversed(ann.orphans):
+        if orphan.paragraph_id == item_id:
+            orphan.edits.append(revision)
+            return
 
 
 def _apply_open_suggestion(doc: Path, ann, suggestion_id: str) -> ApplySuggestionResponse:
+    src, blocks = _load_reconciled_blocks(doc, ann)
     found = find_suggestion(ann, suggestion_id)
     if not found:
         raise HTTPException(status_code=404, detail="suggestion not found")
@@ -219,59 +316,50 @@ def _apply_open_suggestion(doc: Path, ann, suggestion_id: str) -> ApplySuggestio
     _rec, suggestion = found
     if suggestion.status != "open":
         raise HTTPException(status_code=400, detail=f"suggestion is already {suggestion.status}")
+    if not suggestion.hunks:
+        _conflict(suggestion, "suggestion has no patch hunks")
 
-    if suggestion.action == "replace":
-        result = _replace_item_source(
-            doc,
-            ann,
-            suggestion.anchor_id,
-            suggestion.raw,
-            suggestion.author,
-            missing_status=409,
-        )
-        suggestion.status = "accepted"
-        suggestion.applied_ts = utcnow_iso()
-        return ApplySuggestionResponse(
-            suggestion=suggestion,
-            old_id=result.old_id,
-            new_id=result.new_id,
-            revision=result.revision,
-        )
+    ops = _replacement_ops_for_suggestion(src, blocks, suggestion)
+    primary_hunk = suggestion.hunks[0]
+    primary_target = _find_block(blocks, primary_hunk.item_id)
+    before_text = primary_target.raw if primary_target else ""
+    before_revision_id = ann.doc_revision_id
 
-    if suggestion.action == "inline_replace":
-        result = _inline_replace_item_source(doc, ann, suggestion)
-        suggestion.status = "accepted"
-        suggestion.applied_ts = utcnow_iso()
-        return ApplySuggestionResponse(
-            suggestion=suggestion,
-            old_id=result.old_id,
-            new_id=result.new_id,
-            revision=result.revision,
-        )
+    next_src = src
+    for start, end, replacement, _target, _hunk in ops:
+        next_src = next_src[:start] + replacement + next_src[end:]
+    if not next_src.strip():
+        _conflict(suggestion, "suggestion would make the document empty")
 
-    target = _find_live_block(doc, suggestion.anchor_id, missing_status=409)
-    src = doc.read_text(encoding="utf-8")
-    src_had_trailing_newline = src.endswith("\n")
-    src_lines = src.splitlines()
-
-    if suggestion.action == "delete":
-        src_lines[target.source_start_line : target.source_end_line] = []
-        _write_source_lines(doc, src_lines, src_had_trailing_newline)
-        suggestion.status = "accepted"
-        suggestion.applied_ts = utcnow_iso()
-        return ApplySuggestionResponse(suggestion=suggestion, old_id=suggestion.anchor_id)
-
-    if suggestion.action == "insert_before":
-        _spaced_insert(src_lines, target.source_start_line, suggestion.raw)
-    elif suggestion.action == "insert_after":
-        _spaced_insert(src_lines, target.source_end_line, suggestion.raw)
-    else:  # pragma: no cover - pydantic rejects invalid actions before this branch
-        raise HTTPException(status_code=400, detail="unsupported suggestion action")
-
-    _write_source_lines(doc, src_lines, src_had_trailing_newline)
+    doc.write_text(next_src, encoding="utf-8")
     suggestion.status = "accepted"
+    suggestion.conflict = ""
     suggestion.applied_ts = utcnow_iso()
-    return ApplySuggestionResponse(suggestion=suggestion, old_id=suggestion.anchor_id)
+
+    _new_src, new_blocks = _load_reconciled_blocks(doc, ann)
+    new_target = _find_block(new_blocks, primary_hunk.item_id)
+    after_text = new_target.raw if new_target else ""
+    revision = EditRevision(
+        id=str(uuid.uuid4()),
+        author=suggestion.author,
+        old_id=primary_hunk.item_id,
+        new_id=primary_hunk.item_id if new_target else "",
+        before=before_text,
+        after=after_text,
+        item_id=primary_hunk.item_id,
+        before_revision_id=before_revision_id,
+        after_revision_id=ann.doc_revision_id,
+        start=ops[-1][0] if ops else 0,
+        end=ops[-1][1] if ops else 0,
+        ts=utcnow_iso(),
+    )
+    _append_revision(ann, primary_hunk.item_id, revision)
+    return ApplySuggestionResponse(
+        suggestion=suggestion,
+        old_id=primary_hunk.item_id,
+        new_id=primary_hunk.item_id if new_target else None,
+        revision=revision,
+    )
 
 
 def create_app() -> FastAPI:
@@ -303,22 +391,17 @@ def create_app() -> FastAPI:
         doc = _resolve_doc(path)
         async with locks.lock(doc):
             with doc_file_lock(doc):
-                blocks = parse_blocks(doc)
                 ann = load_annotations(doc)
+                _src, blocks = _load_reconciled_blocks(doc, ann)
 
-                live_ids = {b.paragraph_id: (b.preview or preview_of(b.raw)) for b in blocks if b.paragraph_id}
-                ann = reconcile_with_live(ann, live_ids)
-
-                # Overlay review data onto blocks for the response. We do not
-                # seed empty sidecar records just because a doc was viewed.
+                # Overlay review data onto blocks after assigning stable item IDs.
                 for b in blocks:
                     if b.paragraph_id and b.paragraph_id in ann.paragraphs:
                         b.annotations = ann.paragraphs[b.paragraph_id].annotations
                         b.edits = ann.paragraphs[b.paragraph_id].edits
                         b.suggestions = ann.paragraphs[b.paragraph_id].suggestions
 
-                if annotations_path_for(doc).exists() or has_review_data(ann):
-                    save_annotations(doc, ann)
+                save_annotations(doc, ann)
 
             return DocResponse(doc_path=str(doc), blocks=blocks, orphans=ann.orphans)
 
@@ -380,17 +463,33 @@ def create_app() -> FastAPI:
         async with locks.lock(doc):
             with doc_file_lock(doc):
                 ann = load_annotations(doc)
-                rec = _ensure_record_from_live(ann, doc, body.anchor_id)
+                _src, blocks = _load_reconciled_blocks(doc, ann)
+                target = _find_block(blocks, body.anchor_id)
+                if not target:
+                    raise HTTPException(status_code=404, detail="item id not found in doc")
+                rec = ann.paragraphs[target.paragraph_id]
+                try:
+                    hunk = build_suggestion_hunk(
+                        ann,
+                        target,
+                        body.action,
+                        raw,
+                        body.selected_text,
+                        body.occurrence,
+                    )
+                except ValueError as exc:
+                    raise HTTPException(status_code=409, detail=str(exc)) from exc
                 suggestion = Suggestion(
                     id=str(uuid.uuid4()),
                     author=body.author,
                     action=body.action,
-                    anchor_id=body.anchor_id,
+                    anchor_id=target.paragraph_id,
                     raw=raw,
                     selected_text=body.selected_text,
                     occurrence=body.occurrence,
                     note=body.note.strip(),
                     status="open",
+                    hunks=[hunk],
                     ts=utcnow_iso(),
                 )
                 rec.suggestions.append(suggestion)
@@ -424,9 +523,14 @@ def create_app() -> FastAPI:
         async with locks.lock(doc):
             with doc_file_lock(doc):
                 ann = load_annotations(doc)
-                result = _apply_open_suggestion(doc, ann, suggestion_id)
-                save_annotations(doc, ann)
-                return result
+                try:
+                    result = _apply_open_suggestion(doc, ann, suggestion_id)
+                except HTTPException:
+                    save_annotations(doc, ann)
+                    raise
+                else:
+                    save_annotations(doc, ann)
+                    return result
 
     @app.patch("/api/annotations/{annotation_id}", response_model=Annotation)
     async def update_annotation(annotation_id: str, body: UpdateAnnotationBody) -> Annotation:

@@ -806,6 +806,34 @@
     return text.slice(0, start) + replacement + text.slice(start + selectedText.length);
   }
 
+  function replaceSuggestionHunk(text, suggestion) {
+    const hunk = (suggestion.hunks || [])[0];
+    if (!hunk) {
+      return replaceTextOccurrence(
+        text,
+        suggestion.selected_text || "",
+        suggestion.occurrence || 0,
+        suggestion.raw || "",
+      );
+    }
+    if (hunk.kind === "insert") {
+      const pos = hunk.placement === "before" ? 0 : text.length;
+      return text.slice(0, pos) + (hunk.new_text || "") + text.slice(pos);
+    }
+    const start = hunk.start || 0;
+    const end = hunk.end || start;
+    if (text.slice(start, end) === (hunk.old_text || "")) {
+      return text.slice(0, start) + (hunk.new_text || "") + text.slice(end);
+    }
+    const oldText = hunk.old_text || "";
+    if (!oldText) return null;
+    const first = text.indexOf(oldText);
+    if (first !== -1 && text.indexOf(oldText, first + oldText.length) === -1) {
+      return text.slice(0, first) + (hunk.new_text || "") + text.slice(first + oldText.length);
+    }
+    return null;
+  }
+
   function renderSuggestion(suggestion, block) {
     const status = suggestion.status || "open";
     const wrap = document.createElement("div");
@@ -828,15 +856,17 @@
       wrap.appendChild(note);
     }
 
+    if (suggestion.conflict) {
+      const conflict = document.createElement("div");
+      conflict.className = "suggestion-stale";
+      conflict.textContent = suggestion.conflict;
+      wrap.appendChild(conflict);
+    }
+
     if (suggestion.action === "replace" || suggestion.action === "inline_replace") {
       const suggestedRaw =
         suggestion.action === "inline_replace"
-          ? replaceTextOccurrence(
-              block.raw || "",
-              suggestion.selected_text || "",
-              suggestion.occurrence || 0,
-              suggestion.raw || "",
-            )
+          ? replaceSuggestionHunk(block.raw || "", suggestion)
           : suggestion.raw || "";
       const diff = inlineDiffHtml(block.raw || "", suggestedRaw == null ? suggestion.raw || "" : suggestedRaw);
       const grid = document.createElement("div");
@@ -912,7 +942,7 @@
     const panel = document.createElement("div");
     panel.className = "suggestions-panel";
 
-    const suggestions = (block.suggestions || []).filter((s) => s.action !== "inline_replace");
+    const suggestions = block.suggestions || [];
     if (!suggestions.length) return null;
 
     const title = document.createElement("div");

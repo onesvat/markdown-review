@@ -1,17 +1,73 @@
 {
-  "schema_version": 1,
-  "doc_path": "demo.md",
-  "updated_at": "2026-06-04T09:45:19Z",
+  "schema_version": 2,
+  "doc_path": "/home/onur/Code/markdown-review/demo.md",
+  "updated_at": "2026-06-07T13:37:14Z",
+  "doc_revision_id": "ff2c9c0c38842863293e4e747b605aedba446ba5",
   "paragraphs": {
-    "e52e8ec10581": {
-      "id": "e52e8ec10581",
-      "preview": "Every paragraph, heading, list item, code block, and table gets its own review item identity. This paragraph has both a user comment and agent highlights.",
+    "b12c908c-c685-47c5-ab27-33375da419a1": {
+      "id": "b12c908c-c685-47c5-ab27-33375da419a1",
+      "preview": "# markdown-review demo",
+      "legacy_id": "5adbf4e54807",
+      "block_type": "heading",
+      "content_hash": "b52c7766587f9f9b",
+      "source_start_line": 0,
+      "source_end_line": 1,
+      "source_start": 0,
+      "source_end": 22,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "4a233abe-bbf3-4c41-83a9-53a260bf7eb6": {
+      "id": "4a233abe-bbf3-4c41-83a9-53a260bf7eb6",
+      "preview": "This file demonstrates the core features of markdown-review in one place.",
+      "legacy_id": "3f707152cdda",
+      "block_type": "paragraph",
+      "content_hash": "3f707152cdda473d",
+      "source_start_line": 2,
+      "source_end_line": 3,
+      "source_start": 24,
+      "source_end": 97,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "dda602ac-3796-4d66-9839-f3c69fa34652": {
+      "id": "dda602ac-3796-4d66-9839-f3c69fa34652",
+      "preview": "## 1. Block-level review",
+      "legacy_id": "c0bec55449ee",
+      "block_type": "heading",
+      "content_hash": "397c7e4a8010e6ce",
+      "source_start_line": 4,
+      "source_end_line": 5,
+      "source_start": 99,
+      "source_end": 123,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "20118b26-9df5-4b40-bb24-eeaf6cfac436": {
+      "id": "20118b26-9df5-4b40-bb24-eeaf6cfac436",
+      "preview": "Every paragraph, heading, list item, code block, and table gets its own review item identity. This paragraph has both a…",
+      "legacy_id": "e52e8ec10581",
+      "block_type": "paragraph",
+      "content_hash": "e52e8ec10581d49e",
+      "source_start_line": 6,
+      "source_end_line": 7,
+      "source_start": 125,
+      "source_end": 279,
+      "active": true,
       "annotations": [
         {
           "id": "72c51067-6ac0-4733-9f9a-86ec350b2661",
           "author": "user",
           "type": "comment",
           "text": "This is an example user comment. The agent sees it in the new queue.",
+          "selected_text": "",
+          "occurrence": 0,
           "seen": false,
           "ts": "2026-06-04T09:45:19Z"
         },
@@ -20,187 +76,375 @@
           "author": "agent",
           "type": "info",
           "text": "Info example: every block type (paragraphs, headings, list items, code, tables) gets a unique review item ID computed from its content.",
+          "selected_text": "",
+          "occurrence": 0,
           "seen": false,
           "ts": "2026-06-04T09:45:19Z"
         }
       ],
-      "highlights": [],
       "edits": [],
       "suggestions": []
     },
-    "c7cde7600ef3": {
-      "id": "c7cde7600ef3",
+    "35c9df0e-5dd0-4a54-b8ef-f6054c4d6807": {
+      "id": "35c9df0e-5dd0-4a54-b8ef-f6054c4d6807",
       "preview": "- The first list item can be annotated as a separate review item.",
+      "legacy_id": "c7cde7600ef3",
+      "block_type": "bullet_list_item",
+      "content_hash": "9a5e9435c011bfc2",
+      "source_start_line": 8,
+      "source_end_line": 9,
+      "source_start": 281,
+      "source_end": 346,
+      "active": true,
       "annotations": [
         {
           "id": "25a1cbd7-d16e-478a-9858-3dee5a79eac2",
           "author": "agent",
           "type": "info",
           "text": "List items are now separate review items. Each bullet gets its own ID, so you can comment on them independently.",
+          "selected_text": "",
+          "occurrence": 0,
           "seen": false,
           "ts": "2026-06-04T09:45:19Z"
         }
       ],
-      "highlights": [],
       "edits": [],
       "suggestions": []
     },
-    "29342a675bab": {
-      "id": "29342a675bab",
+    "95e34480-daa6-4866-b0ab-c5a25c3c422f": {
+      "id": "95e34480-daa6-4866-b0ab-c5a25c3c422f",
       "preview": "- The second list item also carries its own review item identity.",
+      "legacy_id": "29342a675bab",
+      "block_type": "bullet_list_item",
+      "content_hash": "807d1e0560b834fb",
+      "source_start_line": 9,
+      "source_end_line": 11,
+      "source_start": 347,
+      "source_end": 413,
+      "active": true,
       "annotations": [
         {
           "id": "ff77f990-08e8-4643-b51c-44b3a5e7ef4b",
           "author": "agent",
           "type": "task",
           "text": "Task example: make this bullet more descriptive to better illustrate the feature.",
+          "selected_text": "",
+          "occurrence": 0,
           "seen": false,
           "ts": "2026-06-04T09:45:19Z"
         }
       ],
-      "highlights": [],
       "edits": [],
       "suggestions": []
     },
-    "47ebfecd60b0": {
-      "id": "47ebfecd60b0",
-      "preview": "This paragraph specifically has **selected words** and `inline code` with highlight notes attached.",
+    "79d0e86b-99a5-47e8-8daf-0fcc29714fc0": {
+      "id": "79d0e86b-99a5-47e8-8daf-0fcc29714fc0",
+      "preview": "## 2. Highlights",
+      "legacy_id": "ec96e5a295db",
+      "block_type": "heading",
+      "content_hash": "4f0610aa7ce837b2",
+      "source_start_line": 11,
+      "source_end_line": 12,
+      "source_start": 414,
+      "source_end": 430,
+      "active": true,
       "annotations": [],
-      "highlights": [
+      "edits": [],
+      "suggestions": []
+    },
+    "1cda03cb-f98c-4705-ab2c-6001b94da7ab": {
+      "id": "1cda03cb-f98c-4705-ab2c-6001b94da7ab",
+      "preview": "This paragraph specifically has **selected words** and `inline code` with highlight notes attached.",
+      "legacy_id": "47ebfecd60b0",
+      "block_type": "paragraph",
+      "content_hash": "47ebfecd60b0f5a3",
+      "source_start_line": 13,
+      "source_end_line": 14,
+      "source_start": 432,
+      "source_end": 531,
+      "active": true,
+      "annotations": [
         {
           "id": "f91f6899-6683-4676-9436-f627fa121b2f",
           "author": "user",
-          "style": "marker",
+          "type": "comment",
+          "text": "Marker highlight: draws attention to important phrases.",
           "selected_text": "selected words",
           "occurrence": 0,
-          "text": "Marker highlight: draws attention to important phrases.",
+          "seen": false,
           "ts": "2026-06-04T09:45:19Z"
         },
         {
           "id": "23fdd4ed-9978-424a-bf8b-c5296dadd99c",
           "author": "agent",
-          "style": "underline",
+          "type": "comment",
+          "text": "Underline highlight: good for glossing terms and jargon.",
           "selected_text": "inline code",
           "occurrence": 0,
-          "text": "Underline highlight: good for glossing terms and jargon.",
+          "seen": false,
           "ts": "2026-06-04T09:45:19Z"
         }
       ],
       "edits": [],
       "suggestions": []
     },
-    "3a753e6d012a": {
-      "id": "3a753e6d012a",
-      "preview": "This paragraph is a bit weakly written. During review it can be improved with a replace suggestion.",
+    "0f84ba8b-c759-49b2-be73-5eb32e7a5a83": {
+      "id": "0f84ba8b-c759-49b2-be73-5eb32e7a5a83",
+      "preview": "## 3. Suggestion flow",
+      "legacy_id": "64399f40a049",
+      "block_type": "heading",
+      "content_hash": "8b78a7b2a3e8533f",
+      "source_start_line": 15,
+      "source_end_line": 16,
+      "source_start": 533,
+      "source_end": 554,
+      "active": true,
       "annotations": [],
-      "highlights": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "fc28cdc2-1759-40fb-84c5-7c3b50eb026e": {
+      "id": "fc28cdc2-1759-40fb-84c5-7c3b50eb026e",
+      "preview": "This paragraph is a bit weakly written. During review it can be improved with a replace suggestion.",
+      "legacy_id": "3a753e6d012a",
+      "block_type": "paragraph",
+      "content_hash": "3a753e6d012a5df4",
+      "source_start_line": 17,
+      "source_end_line": 18,
+      "source_start": 556,
+      "source_end": 655,
+      "active": true,
+      "annotations": [],
       "edits": [],
       "suggestions": [
         {
           "id": "fb162ebe-9c2e-4af7-bcdc-1a38cd029cce",
           "author": "agent",
           "action": "replace",
-          "anchor_id": "3a753e6d012a",
+          "anchor_id": "fc28cdc2-1759-40fb-84c5-7c3b50eb026e",
           "raw": "This paragraph was rewritten via a replace suggestion to be clearer and more direct.",
           "selected_text": "",
           "occurrence": 0,
           "note": "Replace suggestion: the proposed text replaces the current block when accepted.",
           "status": "open",
+          "hunks": [
+            {
+              "id": "fdb1008a-0828-432a-a148-5deb52c16937",
+              "item_id": "fc28cdc2-1759-40fb-84c5-7c3b50eb026e",
+              "base_revision_id": "ff2c9c0c38842863293e4e747b605aedba446ba5",
+              "base_item_hash": "3a753e6d012a5df4",
+              "base_item_text": "This paragraph is a bit weakly written. During review it can be improved with a replace suggestion.",
+              "start": 0,
+              "end": 99,
+              "old_text": "This paragraph is a bit weakly written. During review it can be improved with a replace suggestion.",
+              "new_text": "This paragraph was rewritten via a replace suggestion to be clearer and more direct.",
+              "prefix_context": "",
+              "suffix_context": "",
+              "kind": "replace",
+              "placement": "inside"
+            }
+          ],
+          "conflict": "",
           "ts": "2026-06-04T09:45:19Z",
           "applied_ts": null
         }
       ]
     },
-    "ea85e81e157a": {
-      "id": "ea85e81e157a",
+    "adc7906b-9c7f-4bda-bc6d-d9353756a236": {
+      "id": "adc7906b-9c7f-4bda-bc6d-d9353756a236",
       "preview": "This paragraph has an insert-after suggestion behind it.",
+      "legacy_id": "ea85e81e157a",
+      "block_type": "paragraph",
+      "content_hash": "ea85e81e157a2706",
+      "source_start_line": 19,
+      "source_end_line": 20,
+      "source_start": 657,
+      "source_end": 713,
+      "active": true,
       "annotations": [],
-      "highlights": [],
       "edits": [],
       "suggestions": [
         {
           "id": "08d1003c-1bd6-45b3-8667-ff7f12ff9264",
           "author": "agent",
           "action": "insert_after",
-          "anchor_id": "ea85e81e157a",
+          "anchor_id": "adc7906b-9c7f-4bda-bc6d-d9353756a236",
           "raw": "This new paragraph was inserted by accepting the suggestion above.",
           "selected_text": "",
           "occurrence": 0,
           "note": "Insert-after example: new content appears after the anchor block when accepted.",
           "status": "accepted",
+          "hunks": [
+            {
+              "id": "2b8dad60-6891-4e88-a547-22c6cf0925e6",
+              "item_id": "adc7906b-9c7f-4bda-bc6d-d9353756a236",
+              "base_revision_id": "ff2c9c0c38842863293e4e747b605aedba446ba5",
+              "base_item_hash": "ea85e81e157a2706",
+              "base_item_text": "This paragraph has an insert-after suggestion behind it.",
+              "start": 56,
+              "end": 56,
+              "old_text": "",
+              "new_text": "This new paragraph was inserted by accepting the suggestion above.",
+              "prefix_context": "sert-after suggestion behind it.",
+              "suffix_context": "",
+              "kind": "insert",
+              "placement": "after"
+            }
+          ],
+          "conflict": "",
           "ts": "2026-06-04T09:45:19Z",
           "applied_ts": "2026-06-04T09:45:19Z"
         }
       ]
     },
-    "bc9ff4ee83d4": {
-      "id": "bc9ff4ee83d4",
+    "9408c8f6-3e44-4a54-904e-8c50b70a753d": {
+      "id": "9408c8f6-3e44-4a54-904e-8c50b70a753d",
+      "preview": "This new paragraph was inserted by accepting the suggestion above.",
+      "legacy_id": "c6fd5e15a4b7",
+      "block_type": "paragraph",
+      "content_hash": "c6fd5e15a4b7a733",
+      "source_start_line": 21,
+      "source_end_line": 22,
+      "source_start": 715,
+      "source_end": 781,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "de71815c-cb0b-4c44-af4e-1c632704c64c": {
+      "id": "de71815c-cb0b-4c44-af4e-1c632704c64c",
+      "preview": "## 4. Code and tables",
+      "legacy_id": "e422eb5ed86a",
+      "block_type": "heading",
+      "content_hash": "8d5565fa96fabfd9",
+      "source_start_line": 23,
+      "source_end_line": 24,
+      "source_start": 783,
+      "source_end": 804,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "18ef81fd-f244-4eda-af75-422afc50afaf": {
+      "id": "18ef81fd-f244-4eda-af75-422afc50afaf",
       "preview": "```python def normalize(text: str) -> str: return \" \".join(text.split()) ```",
+      "legacy_id": "bc9ff4ee83d4",
+      "block_type": "code",
+      "content_hash": "493aaf23015b20fd",
+      "source_start_line": 25,
+      "source_end_line": 29,
+      "source_start": 806,
+      "source_end": 886,
+      "active": true,
       "annotations": [
         {
           "id": "f357dd10-0e1d-436d-a7cb-df6364b1f9f2",
           "author": "agent",
           "type": "error",
           "text": "Error example: code blocks can be reviewed just like prose. This annotation is marked seen (resolved).",
+          "selected_text": "",
+          "occurrence": 0,
           "seen": true,
           "ts": "2026-06-04T09:45:19Z"
         }
       ],
-      "highlights": [],
       "edits": [],
       "suggestions": []
     },
-    "97c39d20b602": {
-      "id": "97c39d20b602",
-      "preview": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
+    "bf951a46-d85b-4229-99fb-fd3d08c97f69": {
+      "id": "bf951a46-d85b-4229-99fb-fd3d08c97f69",
+      "preview": "| Feature | Status | |---|---| | Annotation | Yes | | Highlight | Yes | | Suggestion | Yes |",
+      "legacy_id": "d8c4399bbde0",
+      "block_type": "table",
+      "content_hash": "4f432562123e58aa",
+      "source_start_line": 30,
+      "source_end_line": 35,
+      "source_start": 888,
+      "source_end": 980,
+      "active": true,
       "annotations": [],
-      "highlights": [],
-      "edits": [
-        {
-          "id": "772ade3f-c721-4eb2-993d-22fe94aa2a5a",
-          "author": "agent",
-          "old_id": "old_math_id_01",
-          "new_id": "97c39d20b602",
-          "before": "A simple inline formula: $a^2 + b^2 = c^2$.",
-          "after": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
-          "ts": "2026-06-04T09:45:19Z"
-        }
-      ],
+      "edits": [],
+      "suggestions": []
+    },
+    "8129accc-f696-4e67-b5ab-a6645cbe3247": {
+      "id": "8129accc-f696-4e67-b5ab-a6645cbe3247",
+      "preview": "## 5. Math",
+      "legacy_id": "0363dbbc03f7",
+      "block_type": "heading",
+      "content_hash": "3a2731ed8ad5dec5",
+      "source_start_line": 36,
+      "source_end_line": 37,
+      "source_start": 982,
+      "source_end": 992,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
+    },
+    "471c7c08-00e1-418b-bb8a-eae2d5cad2ce": {
+      "id": "471c7c08-00e1-418b-bb8a-eae2d5cad2ce",
+      "preview": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
+      "legacy_id": "97c39d20b602",
+      "block_type": "paragraph",
+      "content_hash": "97c39d20b602c29f",
+      "source_start_line": 38,
+      "source_end_line": 39,
+      "source_start": 994,
+      "source_end": 1114,
+      "active": true,
+      "annotations": [],
+      "edits": [],
       "suggestions": [
         {
           "id": "9b253762-c019-4b0e-8ae8-4b4f1e451fbb",
           "author": "agent",
           "action": "replace",
-          "anchor_id": "old_math_id_01",
+          "anchor_id": "471c7c08-00e1-418b-bb8a-eae2d5cad2ce",
           "raw": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
           "selected_text": "",
           "occurrence": 0,
           "note": "Accepted suggestion: when applied, the item ID changes and an edit history entry is created.",
           "status": "accepted",
+          "hunks": [
+            {
+              "id": "f17dcbf0-e921-4b95-a7de-2e577946666e",
+              "item_id": "471c7c08-00e1-418b-bb8a-eae2d5cad2ce",
+              "base_revision_id": "ff2c9c0c38842863293e4e747b605aedba446ba5",
+              "base_item_hash": "97c39d20b602c29f",
+              "base_item_text": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
+              "start": 0,
+              "end": 120,
+              "old_text": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
+              "new_text": "A simple inline formula: $a^2 + b^2 = c^2$. This line was updated as an accepted suggestion and version history example.",
+              "prefix_context": "",
+              "suffix_context": "",
+              "kind": "replace",
+              "placement": "inside"
+            }
+          ],
+          "conflict": "",
           "ts": "2026-06-04T09:45:19Z",
           "applied_ts": "2026-06-04T09:45:19Z"
         }
       ]
+    },
+    "da627a8b-0e1a-471c-a23f-0178dff19783": {
+      "id": "da627a8b-0e1a-471c-a23f-0178dff19783",
+      "preview": "This paragraph was edited externally so its old comment moved to the orphan panel.",
+      "legacy_id": "a1670a9d4055",
+      "block_type": "paragraph",
+      "content_hash": "a1670a9d405508fa",
+      "source_start_line": 40,
+      "source_end_line": 41,
+      "source_start": 1116,
+      "source_end": 1198,
+      "active": true,
+      "annotations": [],
+      "edits": [],
+      "suggestions": []
     }
   },
-  "orphans": [
-    {
-      "paragraph_id": "old_orphan_id",
-      "preview": "This paragraph was externally edited so its comment moved here.",
-      "annotations": [
-        {
-          "id": "6bd0bc81-b4c8-4e96-bd98-e81b919148c6",
-          "author": "agent",
-          "type": "info",
-          "text": "Orphan example: this annotation belongs to a block that was edited outside the tool. It moved to the orphan panel so the review data isn't lost.",
-          "seen": false,
-          "ts": "2026-06-04T09:45:19Z"
-        }
-      ],
-      "highlights": [],
-      "edits": [],
-      "suggestions": [],
-      "removed_at": "2026-06-04T09:45:19Z"
-    }
-  ]
+  "orphans": []
 }

@@ -48,7 +48,7 @@ Leave new agent annotations unseen so the user can find them.
 
 - Review items may be paragraphs, headings, list items, code blocks, tables, figures, equations, blockquotes, or other rendered blocks.
 - The JSON/API field `paragraph_id` means review item ID for compatibility.
-- IDs are content-derived. If source changes, the item ID can change.
+- IDs are stable UUID review item IDs. Source changes preserve the item ID.
 - Authors are free-form reviewer names. Use `agent` for Codex; humans pick their own name. Each name gets its own rotating marker color in the UI.
 - Annotation types are `comment`, `info`, `error`, and `task`.
 - Annotations may carry a `selected_text` span; when present they also render inline as a marker over that text (this is what used to be a separate "highlight").
@@ -73,7 +73,7 @@ markdown-review highlight \
   --text "Hover note"
 ```
 
-`selected_text` must match visible rendered text. Markdown markers such as `**` are not visible, and source newlines may render as spaces. Use `--occurrence N` when the same visible text appears more than once in the item.
+`selected_text` is resolved into a source patch hunk when the suggestion is created. Markdown markers such as `**` are not visible in rendered selections, so source-panel suggestions are more reliable for markup-heavy spans. Use `--occurrence N` when the same text appears more than once in the item.
 
 ## Suggestions
 
@@ -95,7 +95,7 @@ Supported actions:
 - `delete`: delete the item source.
 - `insert-before`: insert Markdown before the item.
 - `insert-after`: insert Markdown after the item.
-- `inline-replace`: replace one selected text occurrence inside the item.
+- `inline-replace`: replace one selected text occurrence inside the item. The stored suggestion carries a patch hunk so later accepts can rebase after other edits in the same item.
 
 Inline suggestion example:
 
