@@ -482,6 +482,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.add_argument("--bib", nargs="*", help="Additional .bib file(s) for citation tooltips")
+    p_serve.add_argument("--no-open", action="store_true", help="Do not open browser")
     p_serve.set_defaults(func=cmd_serve)
 
     p_new = sub.add_parser("new", help="List unseen annotations in a doc")
