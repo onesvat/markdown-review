@@ -465,18 +465,12 @@ def create_app() -> FastAPI:
 
     @app.get("/api/files")
     async def list_files() -> JSONResponse:
-        """List markdown files under the launch folder (and subfolders) for the dropdown."""
+        """List markdown files under the launch folder for the dropdown (non-recursive)."""
         root = _review_root()
-        skip_dirs = {
-            ".git", ".venv", "venv", "node_modules", "__pycache__", "dist", ".pytest_cache",
-            "_build", "build", "_site", ".quarto", "site",
-        }
         files: list[dict[str, str]] = []
         if root.is_dir():
-            for p in sorted(root.rglob("*")):
+            for p in sorted(root.glob("*")):
                 if p.suffix.lower() not in DOC_SUFFIXES or not p.is_file():
-                    continue
-                if any(part in skip_dirs or part.startswith(".") for part in p.relative_to(root).parts[:-1]):
                     continue
                 files.append({"path": str(p), "name": str(p.relative_to(root))})
         return JSONResponse({"root": str(root), "files": files})
